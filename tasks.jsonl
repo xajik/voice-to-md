@@ -1,0 +1,42 @@
+{"id":"P1-1","phase":"setup","title":"Create xcodegen project.yml","status":"done","file":"project.yml"}
+{"id":"P1-2","phase":"setup","title":"Create entitlements file","status":"done","file":"VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements"}
+{"id":"P1-3","phase":"setup","title":"Create Info.plist","status":"done","file":"VoiceToMarkdown/Resources/Info.plist"}
+{"id":"P1-4","phase":"setup","title":"Create vtmd agent command file","status":"done","file":"VoiceToMarkdown/Resources/commands/tsq-voice-to-md.md"}
+{"id":"P1-5","phase":"setup","title":"Create Makefile","status":"done","file":"Makefile"}
+{"id":"P2-1","phase":"models","title":"SessionState enum","status":"done","file":"VoiceToMarkdown/Models/SessionState.swift"}
+{"id":"P2-2","phase":"models","title":"ModelSize enum","status":"done","file":"VoiceToMarkdown/Models/ModelSize.swift"}
+{"id":"P2-3","phase":"models","title":"VTMDSession struct","status":"done","file":"VoiceToMarkdown/Models/VTMDSession.swift"}
+{"id":"P2-4","phase":"models","title":"DownloadProgress struct","status":"done","file":"VoiceToMarkdown/Models/DownloadProgress.swift"}
+{"id":"P3-1","phase":"filesystem","title":"VTMDFileManager","status":"done","file":"VoiceToMarkdown/Services/FileSystem/VTMDFileManager.swift"}
+{"id":"P3-2","phase":"filesystem","title":"FileWatcher","status":"done","file":"VoiceToMarkdown/Services/FileSystem/FileWatcher.swift"}
+{"id":"P4-1","phase":"audio","title":"AudioCaptureService (AVAudioEngine)","status":"done","file":"VoiceToMarkdown/Services/Audio/AudioCaptureService.swift"}
+{"id":"P4-2","phase":"audio","title":"AudioConverter (ffmpeg wrapper)","status":"done","file":"VoiceToMarkdown/Services/Audio/AudioConverter.swift"}
+{"id":"P5-1","phase":"stt","title":"WhisperService (whisper-cli wrapper)","status":"done","file":"VoiceToMarkdown/Services/STT/WhisperService.swift"}
+{"id":"P5-2","phase":"stt","title":"TranscriptBuffer actor","status":"done","file":"VoiceToMarkdown/Services/STT/TranscriptBuffer.swift"}
+{"id":"P6-1","phase":"providers","title":"Provider protocol","status":"done","file":"VoiceToMarkdown/Services/Providers/Provider.swift"}
+{"id":"P6-2","phase":"providers","title":"ClaudeCodeProvider","status":"done","file":"VoiceToMarkdown/Services/Providers/ClaudeCodeProvider.swift"}
+{"id":"P6-3","phase":"providers","title":"GeminiProvider","status":"done","file":"VoiceToMarkdown/Services/Providers/GeminiProvider.swift"}
+{"id":"P6-4","phase":"providers","title":"OpenCodeProvider","status":"done","file":"VoiceToMarkdown/Services/Providers/OpenCodeProvider.swift"}
+{"id":"P6-5","phase":"providers","title":"CodexProvider","status":"done","file":"VoiceToMarkdown/Services/Providers/CodexProvider.swift"}
+{"id":"P6-6","phase":"providers","title":"ProviderRegistry","status":"done","file":"VoiceToMarkdown/Services/Providers/ProviderRegistry.swift"}
+{"id":"P7-1","phase":"tmux","title":"TmuxSession","status":"done","file":"VoiceToMarkdown/Services/Tmux/TmuxSession.swift"}
+{"id":"P8-1","phase":"hookserver","title":"HookServer (NWListener HTTP)","status":"done","file":"VoiceToMarkdown/Services/HookServer/HookServer.swift"}
+{"id":"P8-2","phase":"hookserver","title":"HookHandlers","status":"done","file":"VoiceToMarkdown/Services/HookServer/HookHandlers.swift"}
+{"id":"P9-1","phase":"dictation","title":"HotkeyMonitor (Carbon RegisterEventHotKey)","status":"done","file":"VoiceToMarkdown/Features/GlobalDictation/HotkeyMonitor.swift"}
+{"id":"P9-2","phase":"dictation","title":"KeystrokeInjector (CGEvent synthesis)","status":"done","file":"VoiceToMarkdown/Features/GlobalDictation/KeystrokeInjector.swift"}
+{"id":"P9-3","phase":"dictation","title":"GlobalDictationManager","status":"done","file":"VoiceToMarkdown/Features/GlobalDictation/GlobalDictationManager.swift"}
+{"id":"P10-1","phase":"session","title":"SessionCoordinator","status":"done","file":"VoiceToMarkdown/Features/AgentOrchestration/SessionCoordinator.swift"}
+{"id":"P11-1","phase":"models_mgmt","title":"ModelDownloader (URLSession streaming)","status":"done","file":"VoiceToMarkdown/Features/ModelManagement/ModelDownloader.swift"}
+{"id":"P12-1","phase":"ui","title":"App entry point (@main)","status":"done","file":"VoiceToMarkdown/App/VoiceToMarkdownApp.swift"}
+{"id":"P12-2","phase":"ui","title":"AppDelegate (status bar item)","status":"done","file":"VoiceToMarkdown/App/AppDelegate.swift"}
+{"id":"P12-3","phase":"ui","title":"HUDBubbleView","status":"done","file":"VoiceToMarkdown/UI/HUD/HUDBubbleView.swift"}
+{"id":"P12-4","phase":"ui","title":"HUDViewModel","status":"done","file":"VoiceToMarkdown/UI/HUD/HUDViewModel.swift"}
+{"id":"P12-5","phase":"ui","title":"MarkdownEditorView (NSTextView wrapper)","status":"done","file":"VoiceToMarkdown/UI/Editor/MarkdownEditorView.swift"}
+{"id":"P12-6","phase":"ui","title":"MarkdownEditorViewModel","status":"done","file":"VoiceToMarkdown/UI/Editor/MarkdownEditorViewModel.swift"}
+{"id":"P12-7","phase":"ui","title":"ModelSelectorView","status":"done","file":"VoiceToMarkdown/UI/ModelSelector/ModelSelectorView.swift"}
+{"id":"P12-8","phase":"ui","title":"PrerequisitesView","status":"done","file":"VoiceToMarkdown/UI/Settings/PrerequisitesView.swift"}
+{"id":"P13-1","phase":"cicd","title":"GitHub Actions build workflow","status":"done","file":".github/workflows/build.yml"}
+{"id":"P13-2","phase":"cicd","title":"GitHub Actions release workflow (notarize + dmg)","status":"done","file":".github/workflows/release.yml"}
+{"id":"P14-1","phase":"tests","title":"TranscriptBufferTests","status":"done","file":"Tests/VoiceToMarkdownTests/TranscriptBufferTests.swift"}
+{"id":"P14-2","phase":"tests","title":"ProviderRegistryTests","status":"done","file":"Tests/VoiceToMarkdownTests/ProviderRegistryTests.swift"}
+{"id":"P14-3","phase":"tests","title":"VTMDFileManagerTests","status":"done","file":"Tests/VoiceToMarkdownTests/VTMDFileManagerTests.swift"}

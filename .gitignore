@@ -1,1 +1,13 @@
 .DS_Store
+*.xcodeproj/
+.build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.ipa
+*.dSYM
+*.dSYM.zip
+ExportOptions.plist
+appcast.xml
+/tmp/

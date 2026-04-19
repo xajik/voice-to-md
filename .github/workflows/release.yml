@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Sign, Notarize & Release
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    env:
+      SCHEME: VoiceToMarkdown
+      APP_NAME: VoiceToMarkdown
+      BUNDLE_ID: com.vtmd.voicetomarkdown
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode.app
+
+      - name: Install tools
+        run: |
+          brew install xcodegen create-dmg
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          echo "$CERTIFICATE_BASE64" | base64 --decode > /tmp/certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import /tmp/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Build Release
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -derivedDataPath .build \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            archive \
+            -archivePath .build/VoiceToMarkdown.xcarchive | xcpretty
+
+      - name: Export app
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath .build/VoiceToMarkdown.xcarchive \
+            -exportPath .build/export \
+            -exportOptionsPlist ExportOptions.plist | xcpretty
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit ".build/export/$APP_NAME.app" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          xcrun stapler staple ".build/export/$APP_NAME.app"
+
+      - name: Create DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          create-dmg \
+            --volname "$APP_NAME $VERSION" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "$APP_NAME.app" 175 190 \
+            --hide-extension "$APP_NAME.app" \
+            --app-drop-link 425 190 \
+            ".build/$APP_NAME-$VERSION.dmg" \
+            ".build/export/$APP_NAME.app"
+
+          xcrun stapler staple ".build/$APP_NAME-$VERSION.dmg"
+          echo "DMG_PATH=.build/$APP_NAME-$VERSION.dmg" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Generate appcast
+        run: |
+          cat > appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>VoiceToMarkdown Updates</title>
+              <item>
+                <title>Version $VERSION</title>
+                <sparkle:version>$VERSION</sparkle:version>
+                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                <enclosure
+                  url="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$APP_NAME-$VERSION.dmg"
+                  length="$(stat -f%z "$DMG_PATH")"
+                  type="application/octet-stream"/>
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "VoiceToMarkdown ${{ env.VERSION }}"
+          body: |
+            ## VoiceToMarkdown ${{ env.VERSION }}
+
+            ### Installation
+            1. Download `VoiceToMarkdown-${{ env.VERSION }}.dmg`
+            2. Open and drag to Applications
+            3. On first launch, grant Microphone and Accessibility permissions
+
+            ### Requirements
+            - macOS 13.0+
+            - `brew install whisper-cpp ffmpeg tmux`
+          files: |
+            ${{ env.DMG_PATH }}
+            appcast.xml
+
+      - name: Cleanup keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/signing.keychain-db || true

@@ -1,0 +1,52 @@
+name: VoiceToMarkdown
+options:
+  bundleIdPrefix: com.vtmd
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    OTHER_SWIFT_FLAGS: "-strict-concurrency=minimal"
+
+targets:
+  VoiceToMarkdown:
+    type: application
+    platform: macOS
+    sources:
+      - path: VoiceToMarkdown
+        excludes:
+          - "**/*.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vtmd.voicetomarkdown
+        PRODUCT_NAME: VoiceToMarkdown
+        INFOPLIST_FILE: VoiceToMarkdown/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+    dependencies: []
+    preBuildScripts:
+      - name: SwiftLint
+        script: |
+          if which swiftlint > /dev/null; then
+            swiftlint
+          fi
+
+  VoiceToMarkdownTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/VoiceToMarkdownTests
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/VoiceToMarkdown.app/Contents/MacOS/VoiceToMarkdown"
+    dependencies:
+      - target: VoiceToMarkdown
