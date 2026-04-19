@@ -2,109 +2,107 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project State
+## Build & Test Commands
 
-This is a **specification-only repository** for a macOS-native Swift rewrite of the Voice-to-Markdown (VTMD) tool. No source code exists yet. The full technical spec lives in `vtmd.md` and `README.md`.
+The Xcode project is **generated from `project.yml`** — it is gitignored and must be regenerated after any structural change.
 
-## What We're Building
+```bash
+make setup          # Install xcodegen + generate .xcodeproj (first time)
+make generate       # Re-generate after editing project.yml
+make check          # Verify whisper-cli, ffmpeg, tmux, xcodegen are installed
 
-A non-sandboxed macOS app (Swift 5.9+, SwiftUI) that:
-1. **Global Dictation Mode** — hotkey-triggered, captures mic via AVAudioEngine → whisper.cpp → CGEvent keystroke injection into any active window.
-2. **Agent Orchestration Mode** — split TUI: floating HUD bubble (live STT feed) over full-window editable Markdown editor, with a tmux-managed CLI agent backend.
+make build          # Release build (no signing)
+make build-debug    # Debug build
+make run            # Release build + open the app
+make test           # Run all unit tests
+make test-verbose   # Same without xcpretty
 
-Requirements: Microphone + Accessibility (System Events) entitlements. Distributed as a notarized `.dmg` (not App Store eligible). Sparkle 2 for OTA updates.
-
-## Architecture: File System as IPC Bus
-
-The filesystem at `~/.vtmd/` is the message bus between the Swift orchestrator and the CLI agent running in tmux:
-
-```
-~/.vtmd/
-├── config.toml                        # agent command (e.g. "claude --dangerously-skip-permissions")
-├── models/tts/ggml-{size}.bin         # whisper models from HuggingFace
-├── voice-to-markdown/{timestamp}/
-│   ├── {timestamp}.txt               # raw STT transcript (APPEND-only)
-│   └── {timestamp}.md               # agent's structured output (REPLACE on each update)
-└── notes/{YYYYMMDD}/{HHMMSS}.md
+make lint           # SwiftLint (optional; skipped if not installed)
+make clean          # Remove .build/ and .xcodeproj
+make clean-all      # Also clears Xcode DerivedData
 ```
 
-**Command files** auto-installed at startup to all supported harness dirs:
-- `~/.vtmd/.claude/commands/tsq-voice-to-md.md`
-- `~/.vtmd/.agents/commands/tsq-voice-to-md.md`
-- `~/.vtmd/.opencode/commands/tsq-voice-to-md.md`
-
-## Session Lifecycle
-
-States: `Idle → Initializing → Ready → Recording → Processing → Paused → Stopped`
-
-Init flow:
-1. Create `~/.vtmd/voice-to-markdown/{timestamp}/`
-2. Spawn tmux session: `tmux new-session -d -s vtmd_{timestamp} -c ~/.vtmd -- {command}` with `TSQ_HOOKS_PORT` env
-3. Install provider hook files (see Provider Hooks below)
-4. Send `/vtmd {NOTES_PATH}` via `tmux paste-buffer`, wait 1s, send `C-n`
-5. Wait for `POST /hooks/voice-to-md/init` (90s timeout)
-
-Key struct:
-```swift
-struct VTMDRecordingSession {
-    let id: String          // Unix timestamp millis
-    let dirPath: String     // ~/.vtmd/voice-to-markdown/{id}/
-    let txtPath: String     // raw STT transcript
-    let mdPath: String      // processed markdown
-    var state: SessionState
-    let agentName: String
-    let modelSize: String
-}
+**Run a single test class:**
+```bash
+xcodebuild -scheme VoiceToMarkdown -configuration Debug -derivedDataPath .build \
+  -destination 'platform=macOS' \
+  -only-testing:VoiceToMarkdownTests/TranscriptBufferTests \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-## Concurrency Model
+**Run a single test method** — append `/testMethodName` to `-only-testing`.
 
-- **`TranscriptBuffer` actor**: thread-safe, two-buffer system (`accumulated` + `pending`). Flushes at 30-word threshold or 5s silence.
-- **Chunk payload** sent to agent via tmux paste: `{"current_markdown": "...", "new_transcript": "..."}`
-- **File watching**: `DispatchSourceFileSystemObject` for `.md` updates → live Markdown preview.
-- **Hook server**: local HTTP server on `TSQ_HOOKS_PORT` (default 7070) receives agent signals.
+## Architecture
 
-## Provider Hooks
+### Project generation
 
-Each CLI agent uses a different hook mechanism. Only Claude Code and Gemini support voice hooks.
+`project.yml` (xcodegen) → `VoiceToMarkdown.xcodeproj`. Targets: `VoiceToMarkdown` (macOS app, deployment 13.0, Swift 5.9 language mode with `-strict-concurrency=minimal`) and `VoiceToMarkdownTests`. Entitlements: non-sandboxed, microphone, Apple Events (Accessibility).
 
-| Provider | Hook File | Voice | Mechanism |
-|----------|-----------|-------|-----------|
-| `claude` / `claude-code` | `{workDir}/.claude/settings.json` | ✅ | HTTP Notification hook |
-| `gemini` | `{workDir}/.gemini/settings.json` | ✅ | Shell command AfterAgent hook |
-| `opencode` | `{workDir}/.opencode/plugins/tasksquad.ts` | ❌ | Event-based TS plugin |
-| `codex` | `~/.codex/config.toml` (global) | ❌ | Shell notify command |
+### Entry point and UI ownership
 
-Provider is auto-detected from the binary name in the configured command, defaulting to `ClaudeCodeProvider`.
+`VoiceToMarkdownApp.swift` is `@main` but its `body` only exposes an empty `Settings` scene. All real setup is in `AppDelegate`: sets `NSApp.activationPolicy(.accessory)`, creates the status bar item, owns the `SessionCoordinator` and `GlobalDictationManager` instances, and creates windows on demand. Spawning a new UI component means wiring it through `AppDelegate`.
 
-Hook endpoints the app exposes:
-- `POST /hooks/voice-to-md/init` — agent ready
-- `POST /hooks/voice-to-md/response` — agent posts `{"markdown": "..."}` after each chunk
-- `POST /hooks/voice-to-md/notification` — Claude/Gemini AfterAgent callback
+### Flow 1 — Global Dictation
 
-## Audio Pipeline
+`GlobalDictationManager` → `HotkeyMonitor` (Carbon `RegisterEventHotKey`, default `Cmd+Opt+]`) → `AudioCaptureService` (AVAudioEngine, 16 kHz mono) → `AudioConverter.writePCMBuffersToWAV` → `WhisperService.transcribe` → `KeystrokeInjector.typeText` (CGEvent, requires Accessibility). No tmux, no HookServer involved.
 
-1. `AVAudioEngine` → PCM buffer capture (16kHz mono)
-2. `ffmpeg -y -i {input} -ar 16000 -ac 1 -c:a pcm_s16le {output}` (WebM/OGG → WAV)
-3. `whisper-cli -m {modelPath} -f {wavFile} -nt --output-txt`
-4. `[BLANK_AUDIO]` marker from whisper triggers immediate buffer flush
+### Flow 2 — Agent Orchestration
 
-Prerequisites checked at startup (shown in UI if missing): `whisper-cli` (or `whisper-cpp`) and `ffmpeg`.
+`SessionCoordinator` (`@MainActor ObservableObject`) is the single coordinator. It owns:
+- `TranscriptBuffer` actor — two-buffer accumulation (`accumulated` + `pending`)
+- `HookServer` — local HTTP server on port 7070 (default)
+- `HookHandlers` — closure-based route dispatch
+- `AudioCaptureService` + `WhisperService` — same audio pipeline as Flow 1
+- `FileWatcher` — `DispatchSourceFileSystemObject` watching `{session}.md`
+- `TmuxSession` — wraps `tmux` process calls (spawn, paste-buffer, send-keys, kill)
 
-## UI Structure
+`HUDViewModel` and `MarkdownEditorViewModel` both hold a reference to the **same** `SessionCoordinator` instance injected from `AppDelegate`.
 
-- **Window**: borderless, `.windowStyle(.hiddenTitleBar)`, non-sandboxed
-- **Main canvas**: full-window editable Markdown editor (NSTextView / Runestone), two-way file sync with `{timestamp}.md`
-- **HUD bubble**: draggable ZStack overlay with frosted glass (`.regularMaterial`), rounded corners
-  - Top row: mic toggle, agent state indicator, copy buttons, expand toggle
-  - Bottom row (expandable): live `stt.txt` feed
-- **Model selector**: download from HuggingFace or pick local `.bin` path
+### TranscriptBuffer actor — two-buffer design
 
-## Key Constants
+```
+add(text) → accumulated     (when agent free, returns true if ≥30 words)
+add(text) → pending         (when agentBusy)
+flush()   → joined string, sets agentBusy=true, clears accumulated
+agentDone() → promotes pending→accumulated, returns true if new flush needed
+flushAll()  → drains both buffers (used on silence/stop)
+```
 
-| Constant | Value |
-|----------|-------|
-| `silenceFlushDelay` | 5s |
-| `agentInitTimeout` | 90s |
-| `minWordsToFlush` | 30 words |
-| `tmuxReadyWait` | 30s |
+`[BLANK_AUDIO]` from whisper triggers `flushAll()` immediately regardless of word count.
+
+### HookServer
+
+Hand-rolled HTTP/1.1 over `NWListener` (Network framework) — no third-party dependencies. Parses `\r\n\r\n` to split headers from body, strips query string before routing. `HookHandlers.handle(method:path:body:)` is synchronous and returns `(Int, [String: Any])`; callbacks (`onInit`, `onResponse`, `onNotification`) are dispatched on `DispatchQueue.main`. Tests call `handle()` directly without starting the listener.
+
+### Provider system
+
+`ProviderRegistry.detect(from:override:)` extracts the **last path component of the first word** in the command string (handles absolute paths and flags). Falls back to `ClaudeCodeProvider`. `writeJSON(to:object:)` is a global free function in `Provider.swift` used by all provider `setupVoice` implementations — it creates intermediate directories automatically.
+
+| Provider | Voice | Hook file |
+|---|---|---|
+| `claude` / `claude-code` | ✅ | `{workDir}/.claude/settings.json` — HTTP Notification |
+| `gemini` | ✅ | `{workDir}/.gemini/settings.json` — AfterAgent shell command (must `printf '{}'`) |
+| `opencode` | ❌ | `{workDir}/.opencode/plugins/tasksquad.ts` — TS event plugin |
+| `codex` | ❌ | `~/.codex/config.toml` (global, line-replace) |
+
+### VTMDFileManager
+
+Singleton (`VTMDFileManager.shared`). `bootstrap()` must be called at launch — creates `~/.vtmd/` directories and installs the agent command file to `.claude/commands/`, `.agents/commands/`, `.opencode/commands/`. Agent command is read from `~/.vtmd/config.toml` (`command = "..."` line), defaulting to `"claude --dangerously-skip-permissions"`.
+
+### Key constants (in source, not configurable at runtime)
+
+| Constant | Location | Value |
+|---|---|---|
+| `minWordsToFlush` | `TranscriptBuffer` | 30 words |
+| `hooksPort` | `SessionCoordinator` | 7070 |
+| `agentInitTimeout` | `SessionCoordinator.waitForInit` | 90 s |
+| silence flush delay | `AudioCaptureService` | 5 s |
+| default hotkey | `GlobalDictationManager` | keyCode 0x23, `cmdKey|optionKey` |
+
+## Test Layout
+
+9 test files in `Tests/VoiceToMarkdownTests/`. All tests are pure logic — no network or audio hardware required. Provider hook tests write to a temp dir and verify JSON on disk. `HookHandlersTests` uses `XCTestExpectation` to wait for `DispatchQueue.main.async` callback delivery from `HookHandlers`.
+
+## Concurrency Convention
+
+Swift 5.9 language mode with `-strict-concurrency=minimal`. Pattern throughout: `@MainActor` classes expose `nonisolated` protocol conformances (e.g., `AudioCaptureDelegate`) that dispatch back via `Task { @MainActor in ... }`. Don't switch to Swift 6 strict mode without auditing all `nonisolated` + cross-actor accesses in `SessionCoordinator` and `GlobalDictationManager`.
