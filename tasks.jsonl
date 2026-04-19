@@ -37,6 +37,12 @@
 {"id":"P12-8","phase":"ui","title":"PrerequisitesView","status":"done","file":"VoiceToMarkdown/UI/Settings/PrerequisitesView.swift"}
 {"id":"P13-1","phase":"cicd","title":"GitHub Actions build workflow","status":"done","file":".github/workflows/build.yml"}
 {"id":"P13-2","phase":"cicd","title":"GitHub Actions release workflow (notarize + dmg)","status":"done","file":".github/workflows/release.yml"}
-{"id":"P14-1","phase":"tests","title":"TranscriptBufferTests","status":"done","file":"Tests/VoiceToMarkdownTests/TranscriptBufferTests.swift"}
-{"id":"P14-2","phase":"tests","title":"ProviderRegistryTests","status":"done","file":"Tests/VoiceToMarkdownTests/ProviderRegistryTests.swift"}
-{"id":"P14-3","phase":"tests","title":"VTMDFileManagerTests","status":"done","file":"Tests/VoiceToMarkdownTests/VTMDFileManagerTests.swift"}
+{"id":"P14-1","phase":"tests","title":"TranscriptBufferTests (expanded: flushAll, multi-chunk, full cycle)","status":"done","file":"Tests/VoiceToMarkdownTests/TranscriptBufferTests.swift"}
+{"id":"P14-2","phase":"tests","title":"ProviderRegistryTests (expanded: absolute path, case-insensitive override, error type)","status":"done","file":"Tests/VoiceToMarkdownTests/ProviderRegistryTests.swift"}
+{"id":"P14-3","phase":"tests","title":"VTMDFileManagerTests (expanded: newline, order, overwrite, unicode, config parsing)","status":"done","file":"Tests/VoiceToMarkdownTests/VTMDFileManagerTests.swift"}
+{"id":"P14-4","phase":"tests","title":"SessionStateTests (displayName, isActive, canRecord, canPause, canStop, Equatable)","status":"done","file":"Tests/VoiceToMarkdownTests/SessionStateTests.swift"}
+{"id":"P14-5","phase":"tests","title":"ModelSizeTests (filename, URL, localPath, id, CaseIterable)","status":"done","file":"Tests/VoiceToMarkdownTests/ModelSizeTests.swift"}
+{"id":"P14-6","phase":"tests","title":"VTMDSessionTests (id, paths, tmuxName, state mutability)","status":"done","file":"Tests/VoiceToMarkdownTests/VTMDSessionTests.swift"}
+{"id":"P14-7","phase":"tests","title":"HookHandlersTests (routing, JSON parsing, callbacks, error cases)","status":"done","file":"Tests/VoiceToMarkdownTests/HookHandlersTests.swift"}
+{"id":"P14-8","phase":"tests","title":"ProviderHookOutputTests (Claude/Gemini/OpenCode JSON output verification)","status":"done","file":"Tests/VoiceToMarkdownTests/ProviderHookOutputTests.swift"}
+{"id":"P14-9","phase":"tests","title":"DownloadProgressTests (fraction, percentage, isComplete, error)","status":"done","file":"Tests/VoiceToMarkdownTests/DownloadProgressTests.swift"}

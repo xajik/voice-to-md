@@ -2,7 +2,10 @@ import XCTest
 @testable import VoiceToMarkdown
 
 final class ProviderRegistryTests: XCTestCase {
-    func testDetectsClaude() {
+
+    // MARK: - Detection by command string
+
+    func testDetectsClaudeByAlias() {
         let provider = ProviderRegistry.shared.detect(from: "claude --dangerously-skip-permissions")
         XCTAssertEqual(provider.name, "claude-code")
         XCTAssertTrue(provider.supportsVoiceHooks)
@@ -36,18 +39,52 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertEqual(provider.name, "claude-code")
     }
 
+    func testDetectsFromAbsolutePath() {
+        let provider = ProviderRegistry.shared.detect(from: "/usr/local/bin/gemini --yolo")
+        XCTAssertEqual(provider.name, "gemini")
+    }
+
+    // MARK: - Override
+
     func testOverrideWinsOverCommand() {
         let provider = ProviderRegistry.shared.detect(from: "claude", override: "gemini")
         XCTAssertEqual(provider.name, "gemini")
     }
 
-    func testOpenCodeThrowsOnSetupVoice() {
+    func testOverrideIsCaseInsensitive() {
+        let provider = ProviderRegistry.shared.detect(from: "claude", override: "GEMINI")
+        XCTAssertEqual(provider.name, "gemini")
+    }
+
+    func testUnknownOverrideFallsBackToCommand() {
+        let provider = ProviderRegistry.shared.detect(from: "gemini", override: "nonexistent")
+        XCTAssertEqual(provider.name, "claude-code", "Unknown override falls back to command-based detection which also falls back to claude")
+    }
+
+    // MARK: - Voice hook support
+
+    func testOpenCodeDoesNotSupportVoiceHooks() {
         let provider = OpenCodeProvider()
+        XCTAssertFalse(provider.supportsVoiceHooks)
         XCTAssertThrowsError(try provider.setupVoice(workDir: "/tmp", hooksPort: 7070))
     }
 
-    func testCodexThrowsOnSetupVoice() {
+    func testCodexDoesNotSupportVoiceHooks() {
         let provider = CodexProvider()
+        XCTAssertFalse(provider.supportsVoiceHooks)
         XCTAssertThrowsError(try provider.setupVoice(workDir: "/tmp", hooksPort: 7070))
+    }
+
+    func testVoiceHookErrorIsNotSupported() {
+        let provider = OpenCodeProvider()
+        XCTAssertThrowsError(try provider.setupVoice(workDir: "/tmp", hooksPort: 7070)) { error in
+            guard let providerError = error as? ProviderError else {
+                XCTFail("Expected ProviderError")
+                return
+            }
+            if case .notSupported = providerError { } else {
+                XCTFail("Expected notSupported error")
+            }
+        }
     }
 }
