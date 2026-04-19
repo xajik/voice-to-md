@@ -1,5 +1,8 @@
 # Voice-to-Markdown (VTMD)
 
+![Modes](demo/models.png)
+
+
 ## Product Overview
 Description: A local, macOS-native developer tool that provides zero-latency, offline Speech-to-Text (STT) and intelligent Markdown generation. It operates via two primary modes: global keyboard dictation into any OS window, and an interactive, split-UI TUI agent orchestrator for structured document generation.
 Target Audience: Advanced developers and power users who utilize CLI agents, tmux, and local AI workflows.
@@ -15,6 +18,14 @@ Action: Captures microphone audio, processes it via local whisper.cpp, and injec
 Requirement: Must bypass macOS Accessibility blocking via direct CGEvent synthesis.
 
 ### Flow 2: Agent Orchestration & UI (Visual Mode)
+
+![Prototype specs](/vtmd.md)
+
+
+| Model Selection UI Example              | STT to Agent to MD Exampla             |
+| --------------------------------------- | -------------------------------------- |
+| <img src="demo/model-selection.png" alt="Model selection UI" width="250"/> | <img src="demo/vtmd-chat.png" alt="VTMD chat UI" width="250"/> |
+
 
 Trigger: Distinct global hotkey.
 
