@@ -1,118 +1,184 @@
 # Voice-to-Markdown (VTMD)
 
-![Modes](demo/models.png)
+A local, macOS-native tool for offline Speech-to-Text and AI-powered Markdown generation. Two modes: global keyboard dictation into any window, and an interactive split-UI agent orchestrator.
 
-
-## Product Overview
-Description: A local, macOS-native developer tool that provides zero-latency, offline Speech-to-Text (STT) and intelligent Markdown generation. It operates via two primary modes: global keyboard dictation into any OS window, and an interactive, split-UI TUI agent orchestrator for structured document generation.
-Target Audience: Advanced developers and power users who utilize CLI agents, tmux, and local AI workflows.
-
-## Core User Flows & Requirements
-
-### Flow 1: Global Dictation (Invisible Mode)
-
-Trigger: Global keyboard hotkey.
-
-Action: Captures microphone audio, processes it via local whisper.cpp, and injects output as real-time keystrokes into the active macOS application window.
-
-Requirement: Must bypass macOS Accessibility blocking via direct CGEvent synthesis.
-
-### Flow 2: Agent Orchestration & UI (Visual Mode)
-
-![Prototype specs](/vtmd.md)
-
-
-| Model Selection UI Example              | STT to Agent to MD Exampla             |
-| --------------------------------------- | -------------------------------------- |
+| Model Selection | STT → Agent → Markdown |
+|---|---|
 | <img src="demo/model-selection.png" alt="Model selection UI" width="250"/> | <img src="demo/vtmd-chat.png" alt="VTMD chat UI" width="250"/> |
 
+---
 
-Trigger: Distinct global hotkey.
+## Requirements
 
-Initialization: * App verifies/downloads Whisper model to ~/.vtmd/models/. Provide UI for user to select model file or downalod from huggingface.
+| Dependency | Purpose | Install |
+|---|---|---|
+| Xcode 15+ | Build toolchain | Mac App Store |
+| xcodegen | Project generation | `brew install xcodegen` |
+| whisper-cli | Local STT engine | `brew install whisper-cpp` |
+| ffmpeg | Audio format conversion | `brew install ffmpeg` |
+| tmux | CLI agent process management | `brew install tmux` |
 
-App prompts user to select a TUI Agent (e.g., Gemini, Claude, Opencode).
+Optional: `brew install swiftlint` and `gem install xcpretty` for linting and formatted build output.
 
-App spawns background tmux session, launches CLI agent, and waits for a 15-second initialization timeout.
+---
 
-App injects /vtmd command via tmux send-keys and waits for CLI hook.
+## Quick Start
 
-Execution: * User speaks; raw STT streams continuously to disk.
+```bash
+# 1. Clone
+git clone https://github.com/xajik/voice-to-md.git
+cd voice-to-md
 
-App chunks input non-blockingly and feeds it to the agent via tmux.
+# 2. Install deps and generate Xcode project
+make setup
 
-Agent outputs structured Markdown.
+# 3. Open in Xcode
+make open
+# — or build and launch directly —
+make run
+```
 
-UI Interaction: User can view raw STT, watch live Markdown generation, manually edit the Markdown, and one-click copy either stream.
+### First launch
 
-## UI/UX Requirements
+1. Grant **Microphone** access when prompted.
+2. Grant **Accessibility** access in *System Settings → Privacy & Security → Accessibility* (required for keystroke injection in Flow 1).
+3. Open the **Model Settings** panel from the status bar menu and download a Whisper model (Base recommended to start).
 
-Window Style: Borderless, hidden title bar (.windowStyle(.hiddenTitleBar)).
+---
 
-Main Canvas (Background): A full-window, editable Markdown editor with syntax highlighting (via wrapped NSTextView or native package like Runestone). Two-way file sync ensures manual edits overwrite the agent's output file.
+## Development Commands
 
-HUD Bubble (Foreground): An expandable, draggable ZStack overlay floating on top of the editor.
+```bash
+make check          # Verify all dependencies are installed
+make setup          # Install xcodegen + generate VoiceToMarkdown.xcodeproj
+make generate       # Re-generate project after editing project.yml
+make open           # Open in Xcode
 
-Aesthetics: Frosted glass (.regularMaterial), rounded corners.
+make build          # Release build (no code signing)
+make build-debug    # Debug build
+make run            # Build release + launch the app
 
-Top Row (Static): Mic toggle, Agent State indicator (Initializing, Listening, Processing), Copy buttons, Expand toggle.
+make test           # Run all unit tests
+make test-verbose   # Run tests without xcpretty (raw xcodebuild output)
 
-Controlls: pause, start or stop.
+make lint           # Run SwiftLint
+make lint-fix       # Run SwiftLint with auto-fix
 
-Bottom Row (Expandable): Animated dropdown showing the live stt.txt raw feed.
+make clean          # Remove .build/ and .xcodeproj
+make clean-all      # Also clears Xcode DerivedData for this project
 
-## Technical Specification: macOS App (Orchestrator)
+make dmg            # Print release instructions (DMG built via CI)
+```
 
-Language & UI: Swift 5.9+, SwiftUI.
+---
 
-Permissions: Non-sandboxed. Requires Microphone and Accessibility (System Events) entitlements.
+## Modes
 
-Audio & ML: AVAudioEngine for non-blocking PCM buffer capture. whisper.cpp linked natively via C++ interop, utilizing Metal/CoreML for Apple Silicon acceleration.
+### Flow 1 — Global Dictation (invisible)
 
-Tmux IPC: Foundation Process API to execute tmux new-session and tmux send-keys. Must inherit standard $PATH in .environment dictionary.
+`Cmd+Opt+]` → captures mic → whisper.cpp transcribes → CGEvent injects text into the active window.
 
-## Concurrency & State:
+No UI shown. Works in any app (Terminal, browser, editor). Stops on 5 s silence or second hotkey press.
 
-Queue Actor: Thread-safe Swift Actor handling continuous STT appends.
+### Flow 2 — Agent Orchestration (visual)
 
-Worker Task: Asynchronously pulls chunks from the Actor, monitors agent busy-state, and sends keys.
+Click the menu bar mic icon → **Start Agent Mode**.
 
-File Watching: DispatchSourceFileSystemObject to establish high-performance, native file-system hooks for UI updates and agent state changes.
+- **HUD bubble** (bottom-right, draggable) shows live STT feed and agent state.
+- **Main canvas** is a full-window editable Markdown editor that syncs with the agent's output file.
+- Agent runs in a detached tmux session at `~/.vtmd/`; the app communicates via filesystem IPC and a local HTTP hook server.
 
-## Technical Specification: TUI Agent (Backend)
+---
 
-Environment: Runs entirely within a detached tmux session (vtmd_agent) managed by the Swift app.
+## File System Layout
 
-Mode: TUI/CLI mode (not standard REST API).
+```
+~/.vtmd/
+├── config.toml                          # agent command (default: claude --dangerously-skip-permissions)
+├── models/tts/ggml-{size}.bin           # Whisper models
+├── voice-to-markdown/{timestamp}/
+│   ├── {timestamp}.txt                  # raw STT transcript (append-only)
+│   └── {timestamp}.md                  # agent's structured output (replace on each update)
+├── .claude/commands/tsq-voice-to-md.md  # auto-installed agent prompt
+├── .agents/commands/tsq-voice-to-md.md
+└── .opencode/commands/tsq-voice-to-md.md
+```
 
-Input Handling: Must accept text chunks routed through standard input via tmux send-keys.
+Set the CLI agent command in `~/.vtmd/config.toml`:
 
-Output Handling: Must continuously write/append structured Markdown responses to the designated session directory.
+```toml
+command = "claude --dangerously-skip-permissions"
+```
 
-Hook Triggering: Must touch/update a specific "ready" file upon completing initialization and upon finishing the processing of a chunk, signaling the Swift app to release the next chunk.
+Supported agents: `claude`, `claude-code`, `gemini`, `opencode`, `codex`.
 
-## File System & IPC Contract (~/.vtmd/)
+---
 
-The file system acts as the message bus between the Swift Orchestrator and the CLI Agent.
+## Supported Agents
 
-~/.vtmd/models/: Storage for whisper.cpp .bin files.
+| Agent | Voice Hooks | Hook Mechanism |
+|---|---|---|
+| Claude Code | ✅ | HTTP Notification hook |
+| Gemini | ✅ | AfterAgent shell command |
+| OpenCode | ❌ | Event-based TS plugin |
+| Codex | ❌ | Global config notify |
 
-~/.vtmd/.claude/commands/vtmd.md & ./agents/.commands/vtmd.md: Hardcoded initialization prompts injected at session start.
+---
 
-~/.vtmd/memo/[timestamp]/: Ephemeral session directory.
+## Project Structure
 
-stt.txt: Continuous append log of raw Whisper output. Watched by the HUD Bubble.
+```
+VoiceToMarkdown/
+├── App/                    # @main entry point, AppDelegate, status bar
+├── Models/                 # VTMDSession, SessionState, ModelSize, DownloadProgress
+├── Services/
+│   ├── Audio/             # AVAudioEngine capture + ffmpeg WAV conversion
+│   ├── FileSystem/        # VTMDFileManager + DispatchSource file watcher
+│   ├── HookServer/        # NWListener HTTP server + route handlers
+│   ├── Providers/         # Provider protocol + Claude/Gemini/OpenCode/Codex
+│   ├── STT/               # WhisperService + TranscriptBuffer actor
+│   └── Tmux/              # TmuxSession (spawn, paste, send-keys, kill)
+├── Features/
+│   ├── GlobalDictation/   # HotkeyMonitor (Carbon) + KeystrokeInjector (CGEvent)
+│   ├── AgentOrchestration/ # SessionCoordinator (full Flow 2 lifecycle)
+│   └── ModelManagement/   # URLSession streaming model downloader
+└── UI/
+    ├── HUD/               # Draggable frosted-glass bubble
+    ├── Editor/            # NSTextView Markdown editor with two-way file sync
+    ├── ModelSelector/     # Download or pick local .bin
+    └── Settings/          # Prerequisite checker
+```
 
-structured.md: The agent's formatted output. Watched by the Main Canvas (and written to if the user manually edits the UI).
+---
 
-agent.ready: A 0-byte hook file. The agent touches this file when ready for a new chunk. The Swift app watches this file to trigger the Queue Actor.
+## Testing
 
-## Distribution & Packaging
+```bash
+make test
+```
 
-App Store: Ineligible due to disabled App Sandbox and Accessibility requirements.
+9 test files covering: `TranscriptBuffer` (buffer lifecycle, full cycle), `HookHandlers` (routing, JSON parsing, callbacks), `SessionState` (all computed properties), `ModelSize` (URLs, paths), `VTMDSession` (id format, path construction), `ProviderHookOutput` (Claude/Gemini JSON schema, OpenCode TS plugin), `DownloadProgress` (fraction/percentage math), `VTMDFileManager` (file I/O), `ProviderRegistry` (detection logic).
 
-Format: Notarized macOS Disk Image (.dmg) built and signed via Apple Developer ID certificate.
+---
 
-Updates: Integrated Sparkle 2 framework for automatic, in-app OTA updates via GitHub Releases XML appcast.
+## Releasing
 
-Channels: Hosted on GitHub Releases; distributed via Homebrew Cask (brew install --cask vtmd).
+Push a version tag to trigger the release workflow:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will: build → sign → notarize → package `.dmg` → publish GitHub Release with `appcast.xml` for Sparkle auto-updates.
+
+Required repository secrets: `DEVELOPER_ID_CERT_BASE64`, `DEVELOPER_ID_CERT_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`.
+
+---
+
+## Distribution
+
+- **Format:** Notarized `.dmg` (Apple Developer ID signed)
+- **Updates:** Sparkle 2 — automatic OTA via GitHub Releases appcast
+- **App Store:** Ineligible (non-sandboxed, requires Accessibility)
+- **Homebrew:** `brew install --cask vtmd` *(after Cask PR is merged)*
