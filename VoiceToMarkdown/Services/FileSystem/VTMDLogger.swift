@@ -6,9 +6,9 @@ final class VTMDLogger {
     private let queue = DispatchQueue(label: "com.vtmd.logger", qos: .utility)
     private var fileHandle: FileHandle?
     private let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss.SSS"
-        return f
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm:ss.SSS"
+        return fmt
     }()
 
     private init() {}

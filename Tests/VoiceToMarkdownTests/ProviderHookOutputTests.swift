@@ -4,10 +4,10 @@ import XCTest
 final class ProviderHookOutputTests: XCTestCase {
     private var tmpDir: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try! FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
     }
 
     override func tearDown() {
@@ -172,6 +172,9 @@ final class ProviderHookOutputTests: XCTestCase {
 
     private func loadJSON(at url: URL) throws -> [String: Any] {
         let data = try Data(contentsOf: url)
-        return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Expected JSON object"])
+        }
+        return json
     }
 }

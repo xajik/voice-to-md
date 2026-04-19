@@ -48,10 +48,10 @@ struct PrerequisitesView: View {
     }
 
     private func check() async {
-        for i in prerequisites.indices {
-            let name = prerequisites[i].name
+        for idx in prerequisites.indices {
+            let name = prerequisites[idx].name
             let available = await isAvailable(name)
-            prerequisites[i].isAvailable = available
+            prerequisites[idx].isAvailable = available
         }
     }
 

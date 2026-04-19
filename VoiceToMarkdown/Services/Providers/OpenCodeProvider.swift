@@ -70,7 +70,10 @@ final class OpenCodeProvider: Provider {
                 await post("/hooks/stop?agent=\(agentID)&task_id=\(taskID)&provider=opencode", { stop_reason: "idle", message })
                 sessionIdleSent = true
               }
-              if (event.type === "session.error") await post("/hooks/stop?agent=\(agentID)&task_id=\(taskID)&provider=opencode", { stop_reason: "error", message: event.properties?.error?.message || "Unknown error" })
+              if (event.type === "session.error") {
+                const errMsg = event.properties?.error?.message || "Unknown error"
+                await post("/hooks/stop?agent=\(agentID)&task_id=\(taskID)&provider=opencode", { stop_reason: "error", message: errMsg })
+              }
               if (event.type === "session.updated" && event.properties?.info?.role === "user") { sessionIdleSent = false; messageCache.clear(); pendingToolCount = 0 }
             },
           }

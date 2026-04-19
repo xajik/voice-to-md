@@ -48,18 +48,18 @@ final class HookHandlersTests: XCTestCase {
 
     // MARK: - /hooks/voice-to-md/response
 
-    func testResponseRouteReturns200WithValidBody() {
+    func testResponseRouteReturns200WithValidBody() throws {
         let handlers = HookHandlers()
-        let body = try! JSONSerialization.data(withJSONObject: ["markdown": "# Hello"])
+        let body = try JSONSerialization.data(withJSONObject: ["markdown": "# Hello"])
         let (status, resp) = handlers.handle(method: "POST", path: "/hooks/voice-to-md/response", body: body)
         XCTAssertEqual(status, 200)
         XCTAssertEqual(resp["status"] as? String, "ok")
     }
 
-    func testResponseRouteParsesMarkdown() {
+    func testResponseRouteParsesMarkdown() throws {
         let handlers = HookHandlers()
         let expected = "# My Document\n\nContent here."
-        let body = try! JSONSerialization.data(withJSONObject: ["markdown": expected])
+        let body = try JSONSerialization.data(withJSONObject: ["markdown": expected])
 
         let expectation = expectation(description: "onResponse called")
         handlers.onResponse = { markdown in
@@ -71,9 +71,9 @@ final class HookHandlersTests: XCTestCase {
         waitForExpectations(timeout: 1)
     }
 
-    func testResponseRouteMissingMarkdownFieldReturns400() {
+    func testResponseRouteMissingMarkdownFieldReturns400() throws {
         let handlers = HookHandlers()
-        let body = try! JSONSerialization.data(withJSONObject: ["other": "value"])
+        let body = try JSONSerialization.data(withJSONObject: ["other": "value"])
         let (status, resp) = handlers.handle(method: "POST", path: "/hooks/voice-to-md/response", body: body)
         XCTAssertEqual(status, 400)
         XCTAssertNotNil(resp["error"])
@@ -105,17 +105,17 @@ final class HookHandlersTests: XCTestCase {
 
     // MARK: - /hooks/voice-to-md/notification
 
-    func testNotificationRouteReturns200() {
+    func testNotificationRouteReturns200() throws {
         let handlers = HookHandlers()
-        let body = try! JSONSerialization.data(withJSONObject: ["event": "test"])
+        let body = try JSONSerialization.data(withJSONObject: ["event": "test"])
         let (status, resp) = handlers.handle(method: "POST", path: "/hooks/voice-to-md/notification", body: body)
         XCTAssertEqual(status, 200)
         XCTAssertEqual(resp["status"] as? String, "ok")
     }
 
-    func testNotificationRouteDeliversRawBody() {
+    func testNotificationRouteDeliversRawBody() throws {
         let handlers = HookHandlers()
-        let payload = try! JSONSerialization.data(withJSONObject: ["event": "after_agent"])
+        let payload = try JSONSerialization.data(withJSONObject: ["event": "after_agent"])
 
         let expectation = expectation(description: "onNotification called")
         handlers.onNotification = { data in

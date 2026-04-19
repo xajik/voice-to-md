@@ -76,7 +76,7 @@ final class AudioCaptureService {
     private func computeRMS(_ buffer: AVAudioPCMBuffer) -> Float {
         guard let channelData = buffer.floatChannelData?[0] else { return 0 }
         let count = Int(buffer.frameLength)
-        let sum = (0..<count).reduce(Float(0)) { acc, i in acc + channelData[i] * channelData[i] }
+        let sum = (0..<count).reduce(Float(0)) { acc, idx in acc + channelData[idx] * channelData[idx] }
         return sqrt(sum / Float(count))
     }
 

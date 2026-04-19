@@ -19,9 +19,9 @@ final class CodexProvider: Provider {
         }
 
         var replaced = false
-        for i in 0..<lines.count {
-            if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("notify") {
-                lines[i] = notifyLine
+        for idx in 0..<lines.count {
+            if lines[idx].trimmingCharacters(in: .whitespaces).hasPrefix("notify") {
+                lines[idx] = notifyLine
                 replaced = true
                 break
             }
