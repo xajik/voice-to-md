@@ -13,7 +13,7 @@ actor TranscriptBuffer {
         } else {
             accumulated.append(text)
         }
-        return !agentBusy && wordCount(in: accumulated) >= minWordsToFlush
+        return !agentBusy && wordCount(in: accumulated) > minWordsToFlush
     }
 
     func flush() -> String {

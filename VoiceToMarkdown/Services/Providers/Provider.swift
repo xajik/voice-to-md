@@ -29,6 +29,6 @@ enum ProviderError: Error, LocalizedError {
 func writeJSON(to path: String, object: [String: Any]) throws {
     let dir = (path as NSString).deletingLastPathComponent
     try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-    let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+    let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     try data.write(to: URL(fileURLWithPath: path), options: .atomic)
 }

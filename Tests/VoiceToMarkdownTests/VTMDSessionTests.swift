@@ -15,12 +15,12 @@ final class VTMDSessionTests: XCTestCase {
 
     // MARK: - id
 
-    func testIdIsNumericString() {
+    func testIdIsNumericTimestamp() {
         let session = makeSession()
-        XCTAssertNotNil(Int(session.id), "id should be a numeric string (Unix timestamp ms)")
+        XCTAssertNotNil(Int(session.id), "id should be a numeric unix_ms timestamp")
     }
 
-    func testIdIsReasonableTimestamp() {
+    func testIdTimestampIsReasonable() {
         let session = makeSession()
         let ms = Int(session.id)!
         let seconds = ms / 1000
@@ -30,6 +30,7 @@ final class VTMDSessionTests: XCTestCase {
 
     func testTwoSessionsHaveDistinctIds() {
         let s1 = makeSession()
+        Thread.sleep(forTimeInterval: 0.002)
         let s2 = makeSession()
         XCTAssertNotEqual(s1.id, s2.id)
     }
@@ -82,12 +83,12 @@ final class VTMDSessionTests: XCTestCase {
 
     func testTmuxSessionNamePrefix() {
         let session = makeSession()
-        XCTAssertTrue(session.tmuxSessionName.hasPrefix("vtmd_"))
+        XCTAssertTrue(session.tmuxSessionName.hasPrefix("tsq-vtm-"))
     }
 
-    func testTmuxSessionNameContainsId() {
+    func testTmuxSessionNameContainsTimestampPrefix() {
         let session = makeSession()
-        XCTAssertTrue(session.tmuxSessionName.contains(session.id))
+        XCTAssertTrue(session.tmuxSessionName.contains(String(session.id.prefix(8))))
     }
 
     // MARK: - initial state
@@ -115,5 +116,19 @@ final class VTMDSessionTests: XCTestCase {
         var session = makeSession()
         session.state = .recording
         XCTAssertEqual(session.state, .recording)
+    }
+
+    // MARK: - notesPath
+
+    func testNotesPathInitiallyNil() {
+        let session = makeSession()
+        XCTAssertNil(session.notesPath)
+    }
+
+    func testNotesPathIsMutable() {
+        var session = makeSession()
+        let url = URL(fileURLWithPath: "/tmp/notes.md")
+        session.notesPath = url
+        XCTAssertEqual(session.notesPath, url)
     }
 }

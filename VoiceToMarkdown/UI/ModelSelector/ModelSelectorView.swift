@@ -67,7 +67,12 @@ struct ModelRowView: View {
 
             Spacer()
 
-            if let progress, !progress.isComplete {
+            if let progress, let error = progress.error {
+                Text(error.localizedDescription)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            } else if let progress, !progress.isComplete {
                 HStack(spacing: 8) {
                     ProgressView(value: progress.fraction)
                         .frame(width: 80)

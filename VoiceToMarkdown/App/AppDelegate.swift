@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var agentWindow: NSWindow?
@@ -13,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         try? VTMDFileManager.shared.bootstrap()
+        vtmdLog("APP", "Application launched")
         setupStatusBar()
         checkAccessibilityPermission()
     }
@@ -80,22 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func checkAccessibilityPermission() {
-        if !KeystrokeInjector.requestAccessibilityIfNeeded() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                self.showAccessibilityAlert()
-            }
-        }
-    }
-
-    private func showAccessibilityAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = "VoiceToMarkdown needs Accessibility access to inject transcribed text. Enable it in System Settings → Privacy & Security → Accessibility."
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-        }
+        _ = KeystrokeInjector.requestAccessibilityIfNeeded()
     }
 }
 

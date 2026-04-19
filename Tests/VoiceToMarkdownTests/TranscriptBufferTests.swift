@@ -159,15 +159,19 @@ final class TranscriptBufferTests: XCTestCase {
         _ = await buffer.add("first batch of words here")
         let text = await buffer.flush()
         XCTAssertFalse(text.isEmpty)
-        XCTAssertTrue(await buffer.agentBusy)
+        let busyAfterFlush = await buffer.agentBusy
+        XCTAssertTrue(busyAfterFlush)
 
         // Agent busy — add to pending
         _ = await buffer.add("second batch")
-        XCTAssertTrue(await buffer.hasPending())
+        let hasPending1 = await buffer.hasPending()
+        XCTAssertTrue(hasPending1)
 
         // Agent done — pending promoted
         _ = await buffer.agentDone()
-        XCTAssertFalse(await buffer.agentBusy)
-        XCTAssertTrue(await buffer.hasPending())
+        let busyAfterDone = await buffer.agentBusy
+        let hasPending2 = await buffer.hasPending()
+        XCTAssertFalse(busyAfterDone)
+        XCTAssertTrue(hasPending2)
     }
 }

@@ -7,12 +7,13 @@ final class HookServer {
     private weak var handlers: HookHandlers?
     private let queue = DispatchQueue(label: "com.vtmd.hookserver", qos: .utility)
 
-    init(port: UInt16 = 7070, handlers: HookHandlers) {
+    init(port: UInt16 = 7374, handlers: HookHandlers) {
         self.port = port
         self.handlers = handlers
     }
 
     func start() throws {
+        vtmdLog("HOOK_SERVER", "Starting on port \(port)")
         let params = NWParameters.tcp
         params.allowLocalEndpointReuse = true
 
@@ -27,6 +28,7 @@ final class HookServer {
     }
 
     func stop() {
+        vtmdLog("HOOK_SERVER", "Stopped")
         listener?.cancel()
         listener = nil
     }
@@ -75,6 +77,7 @@ final class HookServer {
         }
 
         let result = handlers?.handle(method: method, path: path, body: body) ?? (404, ["error": "no handlers"])
+        vtmdLog("HOOK_SERVER", "\(method) \(path) → \(result.0)")
         respond(to: connection, status: result.0, json: result.1)
     }
 

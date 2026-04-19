@@ -26,17 +26,23 @@ struct TmuxSession {
     }
 
     func kill() async throws {
-        try? await run(arguments: ["kill-session", "-t", name])
+        try await run(arguments: ["kill-session", "-t", name])
     }
 
     func isAlive() async -> Bool {
         (try? await run(arguments: ["has-session", "-t", name])) != nil
     }
 
+    private static let tmuxPath: String = {
+        let candidates = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]
+        return candidates.first { FileManager.default.fileExists(atPath: $0) } ?? "/usr/bin/tmux"
+    }()
+
     @discardableResult
     private func run(arguments: [String], environment: [String: String]? = nil) async throws -> String {
+        vtmdLog("TMUX", arguments.joined(separator: " "))
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/tmux")
+        process.executableURL = URL(fileURLWithPath: TmuxSession.tmuxPath)
         process.arguments = arguments
 
         if let environment {
@@ -63,6 +69,7 @@ struct TmuxSession {
                     continuation.resume(returning: output)
                 } else {
                     let err = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    vtmdLog("TMUX", "Error (\(proc.terminationStatus)): \(err.trimmingCharacters(in: .whitespacesAndNewlines))")
                     continuation.resume(throwing: TmuxError.commandFailed(proc.terminationStatus, err))
                 }
             }

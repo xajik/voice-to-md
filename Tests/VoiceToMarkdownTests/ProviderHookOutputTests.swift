@@ -37,10 +37,9 @@ final class ProviderHookOutputTests: XCTestCase {
         let provider = ClaudeCodeProvider()
         try provider.setupVoice(workDir: tmpDir.path, hooksPort: 8484)
 
-        let json = try loadJSON(at: tmpDir.appendingPathComponent(".claude/settings.json"))
-        let jsonString = String(data: try JSONSerialization.data(withJSONObject: json), encoding: .utf8) ?? ""
-        XCTAssertTrue(jsonString.contains("8484"), "Port 8484 should appear in the JSON")
-        XCTAssertTrue(jsonString.contains("/hooks/voice-to-md/notification"))
+        let raw = try String(contentsOf: tmpDir.appendingPathComponent(".claude/settings.json"), encoding: .utf8)
+        XCTAssertTrue(raw.contains("8484"), "Port 8484 should appear in the JSON")
+        XCTAssertTrue(raw.contains("/hooks/voice-to-md/notification"))
     }
 
     func testClaudeSetupVoiceHookTypeIsHTTP() throws {
@@ -120,10 +119,9 @@ final class ProviderHookOutputTests: XCTestCase {
         let provider = GeminiProvider()
         try provider.setupVoice(workDir: tmpDir.path, hooksPort: 9000)
 
-        let json = try loadJSON(at: tmpDir.appendingPathComponent(".gemini/settings.json"))
-        let jsonString = String(data: try JSONSerialization.data(withJSONObject: json), encoding: .utf8) ?? ""
-        XCTAssertTrue(jsonString.contains("9000"))
-        XCTAssertTrue(jsonString.contains("/hooks/voice-to-md/notification"))
+        let raw = try String(contentsOf: tmpDir.appendingPathComponent(".gemini/settings.json"), encoding: .utf8)
+        XCTAssertTrue(raw.contains("9000"))
+        XCTAssertTrue(raw.contains("/hooks/voice-to-md/notification"))
     }
 
     func testGeminiEnvContainsTrustWorkspace() {

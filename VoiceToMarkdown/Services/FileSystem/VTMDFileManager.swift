@@ -6,18 +6,22 @@ final class VTMDFileManager {
     let vtmdRoot: URL
     let modelsDir: URL
     let voiceToMarkdownDir: URL
+    let logsDir: URL
 
     private init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         vtmdRoot = home.appendingPathComponent(".vtmd")
         modelsDir = vtmdRoot.appendingPathComponent("models/tts")
         voiceToMarkdownDir = vtmdRoot.appendingPathComponent("voice-to-markdown")
+        logsDir = vtmdRoot.appendingPathComponent("logs")
     }
 
     func bootstrap() throws {
         try createDirectoryIfNeeded(at: vtmdRoot)
         try createDirectoryIfNeeded(at: modelsDir)
         try createDirectoryIfNeeded(at: voiceToMarkdownDir)
+        try createDirectoryIfNeeded(at: logsDir)
+        VTMDLogger.shared.configure(logsDir: logsDir)
         try installCommandFiles()
     }
 
@@ -25,6 +29,22 @@ final class VTMDFileManager {
         let dir = voiceToMarkdownDir.appendingPathComponent(id)
         try createDirectoryIfNeeded(at: dir)
         return dir
+    }
+
+    func createNotesDirectory(workDir: String) throws -> URL {
+        let now = Date()
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = dateFormatter.string(from: now)
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH-mm-ss"
+        let timeStr = timeFormatter.string(from: now)
+
+        let notesDir = URL(fileURLWithPath: workDir).appendingPathComponent(".tsq/notes/\(dateStr)")
+        try createDirectoryIfNeeded(at: notesDir)
+        return notesDir.appendingPathComponent("\(timeStr).md")
     }
 
     func appendTranscript(_ text: String, to url: URL) throws {
@@ -81,9 +101,25 @@ final class VTMDFileManager {
 
     private func installCommandFiles() throws {
         guard let commandContent = commandFileContent() else { return }
-        let harnesses = [".claude/commands", ".agents/commands", ".opencode/commands"]
-        for harness in harnesses {
-            let dir = vtmdRoot.appendingPathComponent(harness)
+        let home = FileManager.default.homeDirectoryForCurrentUser
+
+        // Spec step 2: install to ~/.tsq/commands/ and ~/.tsq/agents/ (global)
+        // and <workDir>/.tsq/commands/ and <workDir>/.tsq/agents/ (local)
+        let tsqDirs: [URL] = [
+            home.appendingPathComponent(".tsq/commands"),
+            home.appendingPathComponent(".tsq/agents"),
+            vtmdRoot.appendingPathComponent(".tsq/commands"),
+            vtmdRoot.appendingPathComponent(".tsq/agents")
+        ]
+
+        // Legacy harness dirs for agent slash command availability
+        let legacyDirs: [URL] = [
+            vtmdRoot.appendingPathComponent(".claude/commands"),
+            vtmdRoot.appendingPathComponent(".agents/commands"),
+            vtmdRoot.appendingPathComponent(".opencode/commands")
+        ]
+
+        for dir in tsqDirs + legacyDirs {
             try? createDirectoryIfNeeded(at: dir)
             let dest = dir.appendingPathComponent("tsq-voice-to-md.md")
             try? commandContent.write(to: dest, atomically: true, encoding: .utf8)

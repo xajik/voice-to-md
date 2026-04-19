@@ -1,4 +1,5 @@
 import AVFoundation
+import Carbon
 import Foundation
 
 @MainActor
@@ -21,11 +22,13 @@ final class GlobalDictationManager: ObservableObject {
         try hotkey.register(keyCode: defaultKeyCode, modifiers: defaultModifiers) { [weak self] in
             Task { @MainActor in self?.toggleRecording() }
         }
+        vtmdLog("DICTATION", "Started with model \(modelPath.lastPathComponent)")
     }
 
     func stop() {
         hotkey.unregister()
         if isRecording { stopRecording() }
+        vtmdLog("DICTATION", "Stopped")
     }
 
     private func toggleRecording() {
@@ -41,7 +44,9 @@ final class GlobalDictationManager: ObservableObject {
         do {
             try audio.start()
             isRecording = true
+            vtmdLog("DICTATION", "Recording started")
         } catch {
+            vtmdLog("DICTATION", "Recording start error: \(error.localizedDescription)")
             lastError = error.localizedDescription
         }
     }
@@ -49,6 +54,7 @@ final class GlobalDictationManager: ObservableObject {
     private func stopRecording() {
         audio.stop()
         isRecording = false
+        vtmdLog("DICTATION", "Recording stopped, \(audioBuffers.count) buffers captured")
         let captured = audioBuffers
         audioBuffers = []
         Task { await transcribeAndInject(buffers: captured) }
@@ -63,10 +69,12 @@ final class GlobalDictationManager: ObservableObject {
             try AudioConverter.writePCMBuffersToWAV(buffers, to: wavURL)
 
             if let text = try await whisper.transcribe(wavFile: wavURL) {
+                vtmdLog("DICTATION", "Transcribed: \(text)")
                 await MainActor.run { KeystrokeInjector.typeText(text + " ") }
             }
             try? FileManager.default.removeItem(at: wavURL)
         } catch {
+            vtmdLog("DICTATION", "Transcription error: \(error.localizedDescription)")
             await MainActor.run { lastError = error.localizedDescription }
         }
     }

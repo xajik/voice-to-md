@@ -16,8 +16,8 @@ final class ProviderRegistry {
     }
 
     func detect(from command: String, override: String? = nil) -> any Provider {
-        if let override, let factory = providers[override.lowercased()] {
-            return factory()
+        if let override {
+            return providers[override.lowercased()]?() ?? ClaudeCodeProvider()
         }
 
         let binary = command.components(separatedBy: " ").first ?? command
