@@ -1,25 +1,36 @@
+import Combine
 import Foundation
 import SwiftUI
 
 @MainActor
 final class HUDViewModel: ObservableObject {
-    @Published var isExpanded = false
-    @Published var agentName = ""
-    @Published var selectedModel: ModelSize = .base
-
     private let coordinator: SessionCoordinator
+    private var cancellables = Set<AnyCancellable>()
 
-    var sessionState: SessionState { coordinator.session?.state ?? .idle }
+    var sessionState: SessionState {
+        if coordinator.isProcessing { return .processing }
+        return coordinator.session?.state ?? .idle
+    }
     var transcript: String { coordinator.transcript }
     var errorMessage: String? { coordinator.error }
 
     init(coordinator: SessionCoordinator) {
         self.coordinator = coordinator
+        // Re-render when the coordinator's published state changes; the
+        // computed properties above read straight from the coordinator.
+        // Both objects are @MainActor, so no queue hop is needed.
+        coordinator.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func startSession() {
+        guard let size = BackendSettings.shared.resolvedWhisperModel() else {
+            coordinator.error = "No Whisper model downloaded. Pick one in Settings."
+            return
+        }
         Task {
-            await coordinator.startSession(agentName: agentName.isEmpty ? "claude" : agentName, modelSize: selectedModel)
+            await coordinator.startSession(modelSize: size)
         }
     }
 
@@ -33,15 +44,5 @@ final class HUDViewModel: ObservableObject {
 
     func stopSession() {
         Task { await coordinator.stopSession() }
-    }
-
-    func copyTranscript() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(coordinator.transcript, forType: .string)
-    }
-
-    func copyMarkdown() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(coordinator.markdown, forType: .string)
     }
 }

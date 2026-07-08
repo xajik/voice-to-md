@@ -3,21 +3,17 @@ import Foundation
 enum SessionState: String, Equatable {
     case idle
     case initializing
-    case ready
     case recording
     case processing
     case paused
-    case stopped
 
     var displayName: String {
         switch self {
         case .idle: return "Idle"
-        case .initializing: return "Initializing..."
-        case .ready: return "Ready"
+        case .initializing: return "Starting..."
         case .recording: return "Recording"
         case .processing: return "Processing"
         case .paused: return "Paused"
-        case .stopped: return "Stopped"
         }
     }
 
@@ -29,7 +25,7 @@ enum SessionState: String, Equatable {
     }
 
     var canRecord: Bool {
-        self == .ready || self == .paused
+        self == .paused
     }
 
     var canPause: Bool {
@@ -37,6 +33,6 @@ enum SessionState: String, Equatable {
     }
 
     var canStop: Bool {
-        isActive || self == .ready
+        isActive
     }
 }

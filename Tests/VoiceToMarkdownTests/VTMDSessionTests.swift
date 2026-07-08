@@ -9,8 +9,8 @@ final class VTMDSessionTests: XCTestCase {
         baseDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     }
 
-    private func makeSession(agentName: String = "claude", model: ModelSize = .base) -> VTMDSession {
-        VTMDSession(agentName: agentName, modelSize: model, baseDir: baseDir)
+    private func makeSession(model: ModelSize = .base) -> VTMDSession {
+        VTMDSession(modelSize: model, baseDir: baseDir)
     }
 
     // MARK: - id
@@ -79,18 +79,6 @@ final class VTMDSessionTests: XCTestCase {
         XCTAssertEqual(session.txtPath.deletingLastPathComponent(), session.mdPath.deletingLastPathComponent())
     }
 
-    // MARK: - tmuxSessionName
-
-    func testTmuxSessionNamePrefix() {
-        let session = makeSession()
-        XCTAssertTrue(session.tmuxSessionName.hasPrefix("tsq-vtm-"))
-    }
-
-    func testTmuxSessionNameContainsTimestampPrefix() {
-        let session = makeSession()
-        XCTAssertTrue(session.tmuxSessionName.contains(String(session.id.prefix(8))))
-    }
-
     // MARK: - initial state
 
     func testInitialStateIsIdle() {
@@ -98,12 +86,7 @@ final class VTMDSessionTests: XCTestCase {
         XCTAssertEqual(session.state, .idle)
     }
 
-    // MARK: - agentName / modelSize
-
-    func testAgentNamePreserved() {
-        let session = makeSession(agentName: "gemini")
-        XCTAssertEqual(session.agentName, "gemini")
-    }
+    // MARK: - modelSize
 
     func testModelSizePreserved() {
         let session = makeSession(model: .small)
@@ -116,19 +99,5 @@ final class VTMDSessionTests: XCTestCase {
         var session = makeSession()
         session.state = .recording
         XCTAssertEqual(session.state, .recording)
-    }
-
-    // MARK: - notesPath
-
-    func testNotesPathInitiallyNil() {
-        let session = makeSession()
-        XCTAssertNil(session.notesPath)
-    }
-
-    func testNotesPathIsMutable() {
-        var session = makeSession()
-        let url = URL(fileURLWithPath: "/tmp/notes.md")
-        session.notesPath = url
-        XCTAssertEqual(session.notesPath, url)
     }
 }

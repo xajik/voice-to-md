@@ -17,6 +17,7 @@ actor TranscriptBuffer {
     }
 
     func flush() -> String {
+        guard !accumulated.isEmpty else { return "" }
         let result = accumulated.joined(separator: " ")
         accumulated = []
         agentBusy = true
@@ -25,6 +26,7 @@ actor TranscriptBuffer {
 
     func flushAll() -> String {
         let combined = (accumulated + pending).joined(separator: " ")
+        guard !combined.isEmpty else { return "" }
         accumulated = []
         pending = []
         agentBusy = true
@@ -51,10 +53,15 @@ actor TranscriptBuffer {
         agentBusy = false
     }
 
-    private func wordCount(in chunks: [String]) -> Int {
-        chunks.joined(separator: " ")
-            .components(separatedBy: .whitespacesAndNewlines)
+    // Single definition of "a word" — also used by the UI badge so the
+    // displayed count matches the flush threshold.
+    static func wordCount(in text: String) -> Int {
+        text.components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .count
+    }
+
+    private func wordCount(in chunks: [String]) -> Int {
+        Self.wordCount(in: chunks.joined(separator: " "))
     }
 }

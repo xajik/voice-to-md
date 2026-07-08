@@ -19,8 +19,6 @@ deps:
 		(echo "  whisper-cli not found — install: brew install whisper-cpp" && exit 1)
 	@which ffmpeg > /dev/null || \
 		(echo "  ffmpeg not found — install: brew install ffmpeg" && exit 1)
-	@which tmux > /dev/null || \
-		(echo "  tmux not found — install: brew install tmux" && exit 1)
 	@echo "  All dependencies present."
 
 generate:
@@ -108,7 +106,6 @@ check:
 	@(which whisper-cli > /dev/null || which whisper-cpp > /dev/null) \
 		&& echo "  [OK] whisper"     || echo "  [MISSING] whisper    — brew install whisper-cpp"
 	@which ffmpeg     > /dev/null && echo "  [OK] ffmpeg"     || echo "  [MISSING] ffmpeg     — brew install ffmpeg"
-	@which tmux       > /dev/null && echo "  [OK] tmux"       || echo "  [MISSING] tmux       — brew install tmux"
 	@which swiftlint  > /dev/null && echo "  [OK] swiftlint"  || echo "  [optional] swiftlint — brew install swiftlint"
 	@which xcpretty   > /dev/null && echo "  [OK] xcpretty"   || echo "  [optional] xcpretty  — gem install xcpretty"
 	@echo ""

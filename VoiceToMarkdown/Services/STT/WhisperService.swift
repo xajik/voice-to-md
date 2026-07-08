@@ -41,7 +41,23 @@ final class WhisperService {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
 
-        return cleaned.isEmpty ? nil : cleaned
+        guard !cleaned.isEmpty else { return nil }
+        if Self.isNoiseOnly(cleaned) {
+            vtmdLog("WHISPER", "Skipped noise-only chunk: \(cleaned)")
+            return nil
+        }
+        return cleaned
+    }
+
+    private static let noiseAnnotationRegex = try? NSRegularExpression(pattern: #"\[[^\]]*\]|\([^)]*\)"#)
+
+    /// True when the transcript is only whisper noise annotations like
+    /// "(wind blowing)", "[silence]", "(mouse clicking)" — no actual speech.
+    static func isNoiseOnly(_ text: String) -> Bool {
+        guard let regex = noiseAnnotationRegex else { return false }
+        let range = NSRange(text.startIndex..., in: text)
+        let stripped = regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+        return stripped.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     static func checkAvailability() async -> Bool {

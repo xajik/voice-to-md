@@ -9,7 +9,13 @@ enum ModelSize: String, CaseIterable, Identifiable, Codable {
 
     var id: String { rawValue }
 
-    var filename: String { "ggml-\(rawValue).bin" }
+    /// Fallback order when no explicit model is selected: balanced first.
+    static let autoPreference: [ModelSize] = [.base, .small, .tiny, .medium, .large]
+
+    var filename: String {
+        // whisper.cpp only publishes v3 for the large model
+        self == .large ? "ggml-large-v3.bin" : "ggml-\(rawValue).bin"
+    }
 
     var approximateSize: String {
         switch self {
@@ -22,7 +28,7 @@ enum ModelSize: String, CaseIterable, Identifiable, Codable {
     }
 
     var huggingFaceURL: URL {
-        let base = "https://huggingface.co/datasets/ggerganov/whisper.cpp/resolve/main/"
+        let base = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
         return URL(string: base + filename)!
     }
 

@@ -8,9 +8,6 @@ struct MarkdownEditorView: View {
         MarkdownNSTextView(text: $viewModel.content) { newText in
             viewModel.userDidEdit(newText)
         }
-        .onChange(of: viewModel.content) { newValue in
-            viewModel.onCoordinatorMarkdownChange(newValue)
-        }
     }
 }
 

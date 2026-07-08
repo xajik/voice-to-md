@@ -13,12 +13,10 @@ final class SessionStateTests: XCTestCase {
 
     func testDisplayNameValues() {
         XCTAssertEqual(SessionState.idle.displayName, "Idle")
-        XCTAssertEqual(SessionState.initializing.displayName, "Initializing...")
-        XCTAssertEqual(SessionState.ready.displayName, "Ready")
+        XCTAssertEqual(SessionState.initializing.displayName, "Starting...")
         XCTAssertEqual(SessionState.recording.displayName, "Recording")
         XCTAssertEqual(SessionState.processing.displayName, "Processing")
         XCTAssertEqual(SessionState.paused.displayName, "Paused")
-        XCTAssertEqual(SessionState.stopped.displayName, "Stopped")
     }
 
     // MARK: - isActive
@@ -32,22 +30,16 @@ final class SessionStateTests: XCTestCase {
     func testInactiveStates() {
         XCTAssertFalse(SessionState.idle.isActive)
         XCTAssertFalse(SessionState.initializing.isActive)
-        XCTAssertFalse(SessionState.ready.isActive)
-        XCTAssertFalse(SessionState.stopped.isActive)
     }
 
     // MARK: - canRecord
-
-    func testCanRecordFromReady() {
-        XCTAssertTrue(SessionState.ready.canRecord)
-    }
 
     func testCanRecordFromPaused() {
         XCTAssertTrue(SessionState.paused.canRecord)
     }
 
     func testCannotRecordFromOtherStates() {
-        let blocked: [SessionState] = [.idle, .initializing, .recording, .processing, .stopped]
+        let blocked: [SessionState] = [.idle, .initializing, .recording, .processing]
         for state in blocked {
             XCTAssertFalse(state.canRecord, "\(state) should not allow recording")
         }
@@ -57,7 +49,7 @@ final class SessionStateTests: XCTestCase {
 
     func testCanPauseOnlyFromRecording() {
         XCTAssertTrue(SessionState.recording.canPause)
-        let others: [SessionState] = [.idle, .initializing, .ready, .processing, .paused, .stopped]
+        let others: [SessionState] = [.idle, .initializing, .processing, .paused]
         for state in others {
             XCTAssertFalse(state.canPause, "\(state) should not allow pause")
         }
@@ -71,14 +63,9 @@ final class SessionStateTests: XCTestCase {
         XCTAssertTrue(SessionState.paused.canStop)
     }
 
-    func testCanStopFromReady() {
-        XCTAssertTrue(SessionState.ready.canStop)
-    }
-
     func testCannotStopFromTerminalOrPendingStates() {
         XCTAssertFalse(SessionState.idle.canStop)
         XCTAssertFalse(SessionState.initializing.canStop)
-        XCTAssertFalse(SessionState.stopped.canStop)
     }
 
     // MARK: - Equatable
@@ -94,6 +81,6 @@ final class SessionStateTests: XCTestCase {
     // MARK: - Helpers
 
     private var allStates: [SessionState] {
-        [.idle, .initializing, .ready, .recording, .processing, .paused, .stopped]
+        [.idle, .initializing, .recording, .processing, .paused]
     }
 }

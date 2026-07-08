@@ -10,7 +10,7 @@ final class ModelSizeTests: XCTestCase {
         XCTAssertEqual(ModelSize.base.filename, "ggml-base.bin")
         XCTAssertEqual(ModelSize.small.filename, "ggml-small.bin")
         XCTAssertEqual(ModelSize.medium.filename, "ggml-medium.bin")
-        XCTAssertEqual(ModelSize.large.filename, "ggml-large.bin")
+        XCTAssertEqual(ModelSize.large.filename, "ggml-large-v3.bin")
     }
 
     func testAllFilenamesEndWithDotBin() {
@@ -69,7 +69,7 @@ final class ModelSizeTests: XCTestCase {
     }
 
     func testLargeURL() {
-        XCTAssertTrue(ModelSize.large.huggingFaceURL.absoluteString.contains("ggml-large.bin"))
+        XCTAssertTrue(ModelSize.large.huggingFaceURL.absoluteString.contains("ggml-large-v3.bin"))
     }
 
     // MARK: - localPath

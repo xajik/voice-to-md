@@ -2,97 +2,163 @@ import SwiftUI
 
 struct ModelSelectorView: View {
     @ObservedObject var downloader: ModelDownloader
-    @State private var customPath = ""
-    @State private var showFilePicker = false
+    @ObservedObject private var backend = BackendSettings.shared
+    @State private var availableModels: [String] = []
+    @State private var backendError: String?
 
     private let fileManager = VTMDFileManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Whisper Models")
+            Text("Local LLM")
                 .font(.title2.weight(.semibold))
 
-            ForEach(ModelSize.allCases) { size in
-                ModelRowView(
-                    size: size,
-                    isDownloaded: fileManager.isModelDownloaded(size),
-                    progress: downloader.progress?.modelSize == size ? downloader.progress : nil,
-                    isDownloading: downloader.isDownloading,
-                    onDownload: { Task { await downloader.download(size) } },
-                    onCancel: downloader.cancel
-                )
-            }
+            backendSection
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Custom Model Path")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                HStack {
-                    TextField("~/.vtmd/models/tts/custom.bin", text: $customPath)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.caption)
-                    Button("Browse") { showFilePicker = true }
-                        .buttonStyle(.bordered)
-                }
-            }
+            Text("Whisper Model")
+                .font(.title2.weight(.semibold))
+
+            whisperSection
         }
         .padding(20)
-        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.data]) { result in
-            if case .success(let url) = result {
-                customPath = url.path
+        .task { await loadModels() }
+    }
+
+    private var backendSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("OpenAI-compatible API (omlx, llama.cpp, LM Studio…)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                TextField(BackendSettings.defaultBaseURL, text: $backend.localAPIBaseURL)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                Button("Refresh") { Task { await loadModels() } }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            HStack(spacing: 8) {
+                Picker("Model", selection: $backend.localModel) {
+                    Text("Auto (first available)").tag("")
+                    ForEach(pickerModels, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                }
+                .labelsHidden()
+                statusIndicator
             }
         }
     }
-}
 
-struct ModelRowView: View {
-    let size: ModelSize
-    let isDownloaded: Bool
-    let progress: DownloadProgress?
-    let isDownloading: Bool
-    let onDownload: () -> Void
-    let onCancel: () -> Void
+    // Keep a stale selection visible in the picker even if the server list changed
+    private var pickerModels: [String] {
+        if !backend.localModel.isEmpty && !availableModels.contains(backend.localModel) {
+            return [backend.localModel] + availableModels
+        }
+        return availableModels
+    }
 
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(size.rawValue.capitalized)
-                    .font(.body.weight(.medium))
-                Text(size.approximateSize)
-                    .font(.caption)
+    private var statusIndicator: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(backendError == nil && !availableModels.isEmpty ? Color.green : Color.red)
+                .frame(width: 8, height: 8)
+            if let backendError {
+                Text(backendError)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+            } else if !availableModels.isEmpty {
+                Text("\(availableModels.count) models")
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-
-            Spacer()
-
-            if let progress, let error = progress.error {
-                Text(error.localizedDescription)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-            } else if let progress, !progress.isComplete {
-                HStack(spacing: 8) {
-                    ProgressView(value: progress.fraction)
-                        .frame(width: 80)
-                    Text("\(progress.percentage)%")
-                        .font(.caption.monospacedDigit())
-                    Button("Cancel", action: onCancel)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                }
-            } else if isDownloaded {
-                Label("Downloaded", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            } else {
-                Button("Download") { onDownload() }
-                    .buttonStyle(.bordered)
-                    .disabled(isDownloading)
-            }
         }
-        .padding(10)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var whisperSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Speech-to-text (whisper.cpp, runs on-device)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Picker("Whisper", selection: $backend.whisperModel) {
+                    Text("Auto (first downloaded)").tag("")
+                    ForEach(ModelSize.allCases) { size in
+                        Text(whisperLabel(for: size)).tag(size.rawValue)
+                    }
+                }
+                .labelsHidden()
+                whisperStatusIndicator
+            }
+            whisperDownloadRow
+        }
+    }
+
+    private func whisperLabel(for size: ModelSize) -> String {
+        let name = "\(size.rawValue.capitalized) (\(size.approximateSize))"
+        return fileManager.isModelDownloaded(size) ? "\(name) ✓" : name
+    }
+
+    /// The model a download would target: explicit selection, else the auto default.
+    private var downloadTarget: ModelSize {
+        ModelSize(rawValue: backend.whisperModel) ?? ModelSize.autoPreference[0]
+    }
+
+    private var whisperStatusIndicator: some View {
+        HStack(spacing: 4) {
+            let resolved = backend.resolvedWhisperModel(in: fileManager)
+            Circle()
+                .fill(resolved != nil ? Color.green : Color.red)
+                .frame(width: 8, height: 8)
+            Text(resolved.map { "using \($0.rawValue.capitalized)" } ?? "no model downloaded")
+                .font(.caption2)
+                .foregroundStyle(resolved != nil ? .secondary : Color.red)
+        }
+    }
+
+    @ViewBuilder
+    private var whisperDownloadRow: some View {
+        if let progress = downloader.progress, let error = progress.error {
+            Text(error.localizedDescription)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .lineLimit(2)
+        } else if let progress = downloader.progress, !progress.isComplete {
+            HStack(spacing: 8) {
+                ProgressView(value: progress.fraction)
+                    .frame(width: 120)
+                Text("\(progress.percentage)% of \(progress.modelSize.rawValue.capitalized)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Button("Cancel", action: downloader.cancel)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        } else if !fileManager.isModelDownloaded(downloadTarget) {
+            Button("Download \(downloadTarget.rawValue.capitalized) (\(downloadTarget.approximateSize))") {
+                Task { await downloader.download(downloadTarget) }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(downloader.isDownloading)
+        }
+    }
+
+    private func loadModels() async {
+        guard let url = backend.baseURL else {
+            backendError = "Invalid URL"
+            availableModels = []
+            return
+        }
+        do {
+            availableModels = try await LocalLLMService(baseURL: url).listModels()
+            backendError = nil
+        } catch {
+            availableModels = []
+            backendError = error.localizedDescription
+        }
     }
 }

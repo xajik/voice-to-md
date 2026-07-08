@@ -10,8 +10,7 @@ struct Prerequisite: Identifiable {
 struct PrerequisitesView: View {
     @State private var prerequisites: [Prerequisite] = [
         Prerequisite(name: "whisper-cli", installHint: "brew install whisper-cpp", isAvailable: false),
-        Prerequisite(name: "ffmpeg", installHint: "brew install ffmpeg", isAvailable: false),
-        Prerequisite(name: "tmux", installHint: "brew install tmux", isAvailable: false)
+        Prerequisite(name: "ffmpeg", installHint: "brew install ffmpeg", isAvailable: false)
     ]
 
     var allMet: Bool { prerequisites.allSatisfy(\.isAvailable) }

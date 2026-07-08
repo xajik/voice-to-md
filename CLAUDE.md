@@ -9,17 +9,14 @@ The Xcode project is **generated from `project.yml`** — it is gitignored and m
 ```bash
 make setup          # Install xcodegen + generate .xcodeproj (first time)
 make generate       # Re-generate after editing project.yml
-make check          # Verify whisper-cli, ffmpeg, tmux, xcodegen are installed
+make check          # Verify whisper-cli, ffmpeg, xcodegen are installed
 
 make build          # Release build (no signing)
 make build-debug    # Debug build
 make run            # Release build + open the app
 make test           # Run all unit tests
-make test-verbose   # Same without xcpretty
-
 make lint           # SwiftLint (optional; skipped if not installed)
 make clean          # Remove .build/ and .xcodeproj
-make clean-all      # Also clears Xcode DerivedData
 ```
 
 **Run a single test class:**
@@ -30,78 +27,56 @@ xcodebuild -scheme VoiceToMarkdown -configuration Debug -derivedDataPath .build 
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO test
 ```
 
-**Run a single test method** — append `/testMethodName` to `-only-testing`.
+**IMPORTANT — signing:** `make build` produces an ad-hoc-signed app whose signature changes every build, silently invalidating macOS TCC grants (microphone, Accessibility). Before installing to /Applications, re-sign with a stable identity:
+```bash
+codesign --force --deep --options runtime \
+  --entitlements VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements \
+  --sign "Apple Development: Igor Steblii (D2L6P5Y844)" \
+  .build/Build/Products/Release/VoiceToMarkdown.app
+```
+
+## What the app does
+
+Menu-bar macOS app, two flows, both local-only (no cloud services):
+
+1. **Global dictation** — hotkey **⌘⌥]** anywhere: record → whisper.cpp transcription → text typed at the cursor via CGEvent. A Spotlight-style floating panel (`DictationHUDView` in a non-activating `NSPanel`) shows listening/transcribing state.
+2. **Agent mode** — window with a markdown editor: record → whisper → 30-word buffer → streaming chat-completions call to a **local OpenAI-compatible LLM server** (omlx/llama.cpp/LM Studio, default `http://127.0.0.1:8000/v1`) that formats the transcript into a live-updating markdown document.
 
 ## Architecture
 
-### Project generation
-
-`project.yml` (xcodegen) → `VoiceToMarkdown.xcodeproj`. Targets: `VoiceToMarkdown` (macOS app, deployment 13.0, Swift 5.9 language mode with `-strict-concurrency=minimal`) and `VoiceToMarkdownTests`. Entitlements: non-sandboxed, microphone, Apple Events (Accessibility).
-
 ### Entry point and UI ownership
 
-`VoiceToMarkdownApp.swift` is `@main` but its `body` only exposes an empty `Settings` scene. All real setup is in `AppDelegate`: sets `NSApp.activationPolicy(.accessory)`, creates the status bar item, owns the `SessionCoordinator` and `GlobalDictationManager` instances, and creates windows on demand. Spawning a new UI component means wiring it through `AppDelegate`.
+`VoiceToMarkdownApp.swift` is `@main` but its `body` only exposes an empty `Settings` scene. All real setup is in `AppDelegate`: status bar item, `SessionCoordinator`, `GlobalDictationManager`, the dictation `NSPanel`, and windows created on demand. **Any window created here must set `isReleasedWhenClosed = false` and be retained in a property** — otherwise AppKit + ARC double-release it on close and crash in the close animation.
 
-### Flow 1 — Global Dictation
+### Agent mode pipeline
 
-`GlobalDictationManager` → `HotkeyMonitor` (Carbon `RegisterEventHotKey`, default `Cmd+Opt+]`) → `AudioCaptureService` (AVAudioEngine, 16 kHz mono) → `AudioConverter.writePCMBuffersToWAV` → `WhisperService.transcribe` → `KeystrokeInjector.typeText` (CGEvent, requires Accessibility). No tmux, no HookServer involved.
+`SessionCoordinator` (`@MainActor ObservableObject`) owns everything:
+- `AudioCaptureService` (AVAudioEngine 16 kHz mono) → PCM buffers are **accumulated into ~4 s chunks** (`transcribeChunkSeconds`) and transcribed **serially** via a FIFO task chain (`enqueueAfterTranscription`). Never transcribe per tap buffer — whisper-cli reloads the model per invocation.
+- `WhisperService` (whisper-cli subprocess). `isNoiseOnly()` filters annotation-only chunks like `(wind blowing)` before they reach the buffer.
+- `TranscriptBuffer` actor — two-buffer accumulation (30-word flush threshold; pending queue while the LLM is busy).
+- `LocalLLMService` — `listModels()` + streaming `formatTranscript()` (SSE); `cleanOutput()` strips `<think>` blocks and code fences. Partial output streams straight into `coordinator.markdown`.
+- `BackendSettings` — UserDefaults-backed base URL + model name (empty = auto-pick first model from `/v1/models`).
+- Session files: `~/.vtmd/voice-to-markdown/{unix_ms}/{id}.txt` (append-only raw) and `{id}.md` (rewritten).
 
-### Flow 2 — Agent Orchestration
+`HUDViewModel` and `MarkdownEditorViewModel` hold the **same** `SessionCoordinator` instance; both subscribe via Combine (`objectWillChange` forwarding / `$markdown` sink) — computed properties alone do not re-render.
 
-`SessionCoordinator` (`@MainActor ObservableObject`) is the single coordinator. It owns:
-- `TranscriptBuffer` actor — two-buffer accumulation (`accumulated` + `pending`)
-- `HookServer` — local HTTP server on port 7070 (default)
-- `HookHandlers` — closure-based route dispatch
-- `AudioCaptureService` + `WhisperService` — same audio pipeline as Flow 1
-- `FileWatcher` — `DispatchSourceFileSystemObject` watching `{session}.md`
-- `TmuxSession` — wraps `tmux` process calls (spawn, paste-buffer, send-keys, kill)
+### Global dictation
 
-`HUDViewModel` and `MarkdownEditorViewModel` both hold a reference to the **same** `SessionCoordinator` instance injected from `AppDelegate`.
+`GlobalDictationManager` → `HotkeyMonitor` (Carbon `RegisterEventHotKey`, keycode `0x1E` = `]`) → `AudioCaptureService` → `WhisperService` → `KeystrokeInjector`. Injection **waits for hotkey modifiers to be released and clears event flags** — synthetic events inherit physically-held modifiers and turn into shortcuts otherwise. Requires Accessibility permission; `AXIsProcessTrusted()` only updates after app restart.
 
-### TranscriptBuffer actor — two-buffer design
-
-```
-add(text) → accumulated     (when agent free, returns true if ≥30 words)
-add(text) → pending         (when agentBusy)
-flush()   → joined string, sets agentBusy=true, clears accumulated
-agentDone() → promotes pending→accumulated, returns true if new flush needed
-flushAll()  → drains both buffers (used on silence/stop)
-```
-
-`[BLANK_AUDIO]` from whisper triggers `flushAll()` immediately regardless of word count.
-
-### HookServer
-
-Hand-rolled HTTP/1.1 over `NWListener` (Network framework) — no third-party dependencies. Parses `\r\n\r\n` to split headers from body, strips query string before routing. `HookHandlers.handle(method:path:body:)` is synchronous and returns `(Int, [String: Any])`; callbacks (`onInit`, `onResponse`, `onNotification`) are dispatched on `DispatchQueue.main`. Tests call `handle()` directly without starting the listener.
-
-### Provider system
-
-`ProviderRegistry.detect(from:override:)` extracts the **last path component of the first word** in the command string (handles absolute paths and flags). Falls back to `ClaudeCodeProvider`. `writeJSON(to:object:)` is a global free function in `Provider.swift` used by all provider `setupVoice` implementations — it creates intermediate directories automatically.
-
-| Provider | Voice | Hook file |
-|---|---|---|
-| `claude` / `claude-code` | ✅ | `{workDir}/.claude/settings.json` — HTTP Notification |
-| `gemini` | ✅ | `{workDir}/.gemini/settings.json` — AfterAgent shell command (must `printf '{}'`) |
-| `opencode` | ❌ | `{workDir}/.opencode/plugins/tasksquad.ts` — TS event plugin |
-| `codex` | ❌ | `~/.codex/config.toml` (global, line-replace) |
-
-### VTMDFileManager
-
-Singleton (`VTMDFileManager.shared`). `bootstrap()` must be called at launch — creates `~/.vtmd/` directories and installs the agent command file to `.claude/commands/`, `.agents/commands/`, `.opencode/commands/`. Agent command is read from `~/.vtmd/config.toml` (`command = "..."` line), defaulting to `"claude --dangerously-skip-permissions"`.
-
-### Key constants (in source, not configurable at runtime)
+### Key constants
 
 | Constant | Location | Value |
 |---|---|---|
 | `minWordsToFlush` | `TranscriptBuffer` | 30 words |
-| `hooksPort` | `SessionCoordinator` | 7070 |
-| `agentInitTimeout` | `SessionCoordinator.waitForInit` | 90 s |
-| silence flush delay | `AudioCaptureService` | 5 s |
-| default hotkey | `GlobalDictationManager` | keyCode 0x23, `cmdKey|optionKey` |
+| `transcribeChunkSeconds` | `SessionCoordinator` | 4 s |
+| silence flush delay | `AudioCaptureService` | 5 s (timer scheduled on main queue — tap thread has no run loop) |
+| default LLM URL | `BackendSettings` | `http://127.0.0.1:8000/v1` |
+| default hotkey | `GlobalDictationManager` | `⌘⌥]` (0x1E, cmdKey\|optionKey) |
 
 ## Test Layout
 
-9 test files in `Tests/VoiceToMarkdownTests/`. All tests are pure logic — no network or audio hardware required. Provider hook tests write to a temp dir and verify JSON on disk. `HookHandlersTests` uses `XCTestExpectation` to wait for `DispatchQueue.main.async` callback delivery from `HookHandlers`.
+Test files in `Tests/VoiceToMarkdownTests/` are pure logic — no network, audio hardware, or LLM server required. `LocalLLMServiceTests` covers request building, SSE parsing, and output cleaning via the service's static helpers.
 
 ## Concurrency Convention
 

@@ -81,31 +81,6 @@ final class VTMDFileManagerTests: XCTestCase {
         XCTAssertEqual(fm.readMarkdown(from: file), content)
     }
 
-    // MARK: - agentCommand config parsing
-
-    func testAgentCommandDefaultsWhenNoConfig() {
-        let cmd = fm.agentCommand()
-        XCTAssertFalse(cmd.isEmpty)
-    }
-
-    func testAgentCommandParsedFromConfig() throws {
-        let configPath = tmpDir.appendingPathComponent("config.toml")
-        try "command = \"gemini --model gemini-2.0-flash\"\n".write(to: configPath, atomically: true, encoding: .utf8)
-        // VTMDFileManager reads from its own vtmdRoot; parsing logic tested via the raw helper
-        let lines = ["command = \"gemini --model gemini-2.0-flash\""]
-        var result = ""
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("command") {
-                let parts = trimmed.components(separatedBy: "=")
-                result = parts.dropFirst().joined(separator: "=")
-                    .trimmingCharacters(in: .whitespaces)
-                    .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-            }
-        }
-        XCTAssertEqual(result, "gemini --model gemini-2.0-flash")
-    }
-
     // MARK: - isModelDownloaded
 
     func testIsModelDownloadedReturnsFalseForMissing() {

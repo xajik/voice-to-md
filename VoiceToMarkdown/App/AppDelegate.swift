@@ -1,11 +1,16 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var agentWindow: NSWindow?
-    private var hudWindow: NSWindow?
+    private var settingsWindow: NSWindow?
+    private var dictationPanel: NSPanel?
+    private var cancellables = Set<AnyCancellable>()
+    private var dictationMenuItem: NSMenuItem?
+    private var dictationActive = false
 
     private let coordinator = SessionCoordinator()
     private let dictationManager = GlobalDictationManager()
@@ -16,23 +21,125 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? VTMDFileManager.shared.bootstrap()
         vtmdLog("APP", "Application launched")
         setupStatusBar()
+        setupDictationPanel()
         checkAccessibilityPermission()
+        startGlobalDictation()
+
+        // Re-load the whisper model when the Settings selection changes.
+        // @Published emits on willSet, so hop to the next runloop turn to
+        // read the committed value.
+        BackendSettings.shared.$whisperModel
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.restartDictationIfActive() }
+            }
+            .store(in: &cancellables)
+
+        // A finished download may be the model the user just selected — reload,
+        // or start dictation if it never came up for lack of a model.
+        downloader.$progress
+            .compactMap { $0 }
+            .filter { $0.isComplete && $0.error == nil }
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if self.dictationActive {
+                        self.restartDictationIfActive()
+                    } else {
+                        self.startGlobalDictation()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func restartDictationIfActive() {
+        guard dictationActive else { return }
+        dictationManager.stop()
+        dictationActive = false
+        startGlobalDictation()
+    }
+
+    private func setupDictationPanel() {
+        // Non-activating so focus stays in the target app — keystroke
+        // injection must land wherever the user was typing.
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 66),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .floating
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isReleasedWhenClosed = false
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.contentView = NSHostingView(rootView: DictationHUDView(manager: dictationManager))
+        dictationPanel = panel
+
+        dictationManager.$phase
+            .sink { [weak self] phase in
+                if phase == .idle {
+                    self?.dictationPanel?.orderOut(nil)
+                } else {
+                    self?.showDictationPanel()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func showDictationPanel() {
+        guard let panel = dictationPanel, let screen = NSScreen.main else { return }
+        let frame = screen.visibleFrame
+        let origin = NSPoint(
+            x: frame.midX - panel.frame.width / 2,
+            y: frame.minY + frame.height * 0.7
+        )
+        panel.setFrameOrigin(origin)
+        panel.orderFrontRegardless()
     }
 
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceToMarkdown")
+            button.image = Self.statusBarIcon()
             button.action = #selector(statusBarClicked)
             button.target = self
         }
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Start Agent Mode", action: #selector(openAgentWindow), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Model Settings", action: #selector(openModelSelector), keyEquivalent: ""))
+        let dictationItem = NSMenuItem(title: "Global Dictation (⌘⌥])", action: #selector(toggleDictation), keyEquivalent: "")
+        menu.addItem(dictationItem)
+        dictationMenuItem = dictationItem
+        menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openModelSelector), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem?.menu = menu
+    }
+
+    /// Speech bubble with a character (voice → text) plus a sparkles badge (AI),
+    /// composed as a template image so it tints with the menu bar.
+    private static func statusBarIcon() -> NSImage? {
+        let baseConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        guard let base = NSImage(systemSymbolName: "character.bubble", accessibilityDescription: "VoiceToMarkdown")?
+            .withSymbolConfiguration(baseConfig) else {
+            return NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "VoiceToMarkdown")
+        }
+        guard let badge = NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 8, weight: .bold)) else {
+            return base
+        }
+        let icon = NSImage(size: NSSize(width: 21, height: 17), flipped: false) { _ in
+            base.draw(in: NSRect(x: 0, y: 0, width: 16, height: 16))
+            badge.draw(in: NSRect(x: 13, y: 9, width: 8, height: 8))
+            return true
+        }
+        icon.isTemplate = true
+        return icon
     }
 
     @objc private func statusBarClicked() {
@@ -60,6 +167,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.contentView = NSHostingView(rootView: contentView)
             window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false
+            // No stop button in the HUD — closing the window ends the session
+            window.delegate = self
             agentWindow = window
         }
         agentWindow?.makeKeyAndOrderFront(nil)
@@ -67,34 +176,109 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openModelSelector() {
-        let view = ModelSelectorView(downloader: downloader)
-        let panel = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        panel.title = "Whisper Models"
-        panel.center()
-        panel.contentView = NSHostingView(rootView: view)
-        panel.makeKeyAndOrderFront(nil)
+        if settingsWindow == nil {
+            let view = ModelSelectorView(downloader: downloader)
+            let panel = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Settings"
+            panel.center()
+            panel.contentView = NSHostingView(rootView: view)
+            // AppKit releases windows on close by default; combined with ARC
+            // that double-releases and crashes in the close animation.
+            panel.isReleasedWhenClosed = false
+            settingsWindow = panel
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
     private func checkAccessibilityPermission() {
         _ = KeystrokeInjector.requestAccessibilityIfNeeded()
     }
+
+    private func startGlobalDictation() {
+        let fm = VTMDFileManager.shared
+        guard let size = BackendSettings.shared.resolvedWhisperModel(in: fm) else {
+            vtmdLog("APP", "Global dictation not started: no whisper model downloaded")
+            dictationMenuItem?.state = .off
+            return
+        }
+        do {
+            try dictationManager.start(modelPath: size.localPath(in: fm.modelsDir))
+            dictationActive = true
+            dictationMenuItem?.state = .on
+        } catch {
+            vtmdLog("APP", "Global dictation failed to start: \(error.localizedDescription)")
+        }
+    }
+
+    @objc private func toggleDictation() {
+        if dictationActive {
+            dictationManager.stop()
+            dictationActive = false
+            dictationMenuItem?.state = .off
+        } else {
+            startGlobalDictation()
+        }
+    }
+}
+
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === agentWindow else { return }
+        Task { await coordinator.stopSession() }
+    }
 }
 
 struct AgentOrchestratorView: View {
     @ObservedObject var hudVM: HUDViewModel
     @ObservedObject var editorVM: MarkdownEditorViewModel
+    @State private var showRawInput = false
+
+    private let rawPaneHeight: CGFloat = 120
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            MarkdownEditorView(viewModel: editorVM)
+            VStack(spacing: 0) {
+                MarkdownEditorView(viewModel: editorVM)
+                Divider()
+                rawInputBar
+                if showRawInput {
+                    RawTranscriptView(viewModel: hudVM)
+                        .frame(height: rawPaneHeight)
+                }
+            }
             HUDBubbleView(viewModel: hudVM)
-                .padding(20)
+                .padding(.trailing, 64)
+                .padding(.bottom, 64)
+        }
+    }
+
+    private var rawInputBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: showRawInput ? "chevron.down" : "chevron.up")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text("Raw input")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            Spacer()
+            if !hudVM.transcript.isEmpty {
+                Text("\(TranscriptBuffer.wordCount(in: hudVM.transcript)) words")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.bar)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) { showRawInput.toggle() }
         }
     }
 }

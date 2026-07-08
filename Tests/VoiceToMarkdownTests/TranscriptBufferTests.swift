@@ -34,6 +34,7 @@ final class TranscriptBufferTests: XCTestCase {
 
     func testAddWhileBusyGoesToPending() async {
         let buffer = TranscriptBuffer()
+        _ = await buffer.add("initial text")
         _ = await buffer.flush()
         let shouldFlush = await buffer.add("goes to pending")
         XCTAssertFalse(shouldFlush, "Cannot flush while agent is busy")
@@ -61,12 +62,14 @@ final class TranscriptBufferTests: XCTestCase {
         XCTAssertTrue(flushed.contains("chunk two"))
     }
 
-    func testFlushEmptyBufferReturnsEmptyString() async {
+    func testFlushEmptyBufferReturnsEmptyStringAndStaysFree() async {
         let buffer = TranscriptBuffer()
         let flushed = await buffer.flush()
         XCTAssertTrue(flushed.isEmpty)
+        // An empty flush sends nothing, so no response will ever arrive to
+        // clear agentBusy — it must stay false or pending text wedges.
         let busy = await buffer.agentBusy
-        XCTAssertTrue(busy)
+        XCTAssertFalse(busy)
     }
 
     // MARK: - flushAll
@@ -114,6 +117,7 @@ final class TranscriptBufferTests: XCTestCase {
 
     func testAgentDonePromotesPendingAboveThresholdSignalsFlush() async {
         let buffer = TranscriptBuffer()
+        _ = await buffer.add("initial text")
         _ = await buffer.flush()
         let manyWords = Array(repeating: "word", count: 31).joined(separator: " ")
         _ = await buffer.add(manyWords)
