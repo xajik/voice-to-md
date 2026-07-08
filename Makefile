@@ -1,4 +1,4 @@
-.PHONY: setup generate open build test lint clean run deps check
+.PHONY: setup generate open build test lint clean run deps check install uninstall
 
 SCHEME        = VoiceToMarkdown
 CONFIGURATION = Release
@@ -133,6 +133,76 @@ clean:
 
 clean-all: clean
 	rm -rf ~/Library/Developer/Xcode/DerivedData/VoiceToMarkdown-*
+
+# ── Local install (mirrors install.sh for personal use) ──────────────────────
+#
+#   Replicates the production install.sh flow without cloning the repo.
+#   Installs Homebrew deps, builds a Release .app, and copies it to /Applications.
+#   Usage: make install
+
+APP_NAME      = VoiceToMarkdown.app
+APP_DST       = /Applications/$(APP_NAME)
+
+install:
+	@echo ""
+	@echo "=== Voice-to-Markdown local installer ==="
+	@echo ""
+	@# ── Pre-flight checks ────────────────────────────────────────────────
+	@[ "$$(uname -s)" = "Darwin" ] || (echo "Error: macOS only." && exit 1)
+	@command -v brew > /dev/null 2>&1 \
+		|| (echo "Error: Homebrew required. Install: https://brew.sh" && exit 1)
+	@xcode-select -p > /dev/null 2>&1 \
+		|| (echo "Error: Xcode CLT required. Run: xcode-select --install" && exit 1)
+	@echo "  [OK] macOS, Homebrew, Xcode CLT"
+	@echo ""
+	@# ── Install Homebrew dependencies ────────────────────────────────────
+	@echo "==> Installing dependencies (xcodegen, whisper-cpp, ffmpeg)…"
+	@for pkg in xcodegen whisper-cpp ffmpeg; do \
+		if brew list "$$pkg" > /dev/null 2>&1; then \
+			echo "    $$pkg already installed"; \
+		else \
+			echo "    Installing $$pkg…"; \
+			brew install "$$pkg"; \
+		fi; \
+	done
+	@echo ""
+	@# ── Generate project & build ──────────────────────────────────────────
+	@echo "==> Generating Xcode project…"
+	@$(MAKE) generate
+	@echo ""
+	@echo "==> Building Release (this may take a few minutes)…"
+	@$(MAKE) build
+	@echo ""
+	@# ── Copy .app to /Applications ───────────────────────────────────────
+	@[ -d "$(APP_PATH)" ] \
+		|| (echo "Error: Build finished but $(APP_PATH) was not produced." && exit 1)
+	@echo "==> Installing to /Applications…"
+	@if [ -d "$(APP_DST)" ]; then \
+		echo "    Replacing existing $(APP_DST)"; \
+		rm -rf "$(APP_DST)"; \
+	fi
+	@cp -R "$(APP_PATH)" "$(APP_DST)"
+	@echo ""
+	@echo "==> Done! 🎙️"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Open VoiceToMarkdown from /Applications (menu-bar icon appears top-right)."
+	@echo "  2. Grant Microphone and Accessibility access when macOS asks."
+	@echo "  3. Open Settings… from the menu bar and download a Whisper model"
+	@echo "     (Base, ~150 MB, is a great start)."
+	@echo "  4. For Agent Mode, run any local OpenAI-compatible LLM server."
+	@echo ""
+	@echo "  Press ⌘⌥] anywhere to dictate. Talk. Get clean markdown. 100%% local."
+	@echo ""
+
+uninstall:
+	@echo "==> Removing /Applications/$(APP_NAME)…"
+	@if [ -d "$(APP_DST)" ]; then \
+		rm -rf "$(APP_DST)"; \
+		echo "    Removed."; \
+	else \
+		echo "    $(APP_DST) not found — nothing to remove."; \
+	fi
 
 # ── Distribution ─────────────────────────────────────────────────────────────
 
