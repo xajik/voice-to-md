@@ -21,8 +21,8 @@ final class MarkdownEditorViewModel: ObservableObject {
 
     func userDidEdit(_ text: String) {
         content = text
-        if let mdPath = coordinator.session?.mdPath {
-            try? VTMDFileManager.shared.writeMarkdown(text, to: mdPath)
+        if let docPath = coordinator.session?.docPath {
+            try? VTMDFileManager.shared.writeMarkdown(text, to: docPath)
         }
     }
 

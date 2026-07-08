@@ -25,6 +25,10 @@ final class BackendSettings: ObservableObject {
     @Published var fixTranscriptionWithLLM: Bool {
         didSet { defaults.set(fixTranscriptionWithLLM, forKey: Keys.fixTranscriptionWithLLM) }
     }
+    /// Agent-mode output format rawValue; falls back to markdown.
+    @Published var outputFormat: String {
+        didSet { defaults.set(outputFormat, forKey: Keys.outputFormat) }
+    }
 
     private let defaults: UserDefaults
 
@@ -35,6 +39,11 @@ final class BackendSettings: ObservableObject {
         whisperModel = defaults.string(forKey: Keys.whisperModel) ?? ""
         launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? true
         fixTranscriptionWithLLM = defaults.object(forKey: Keys.fixTranscriptionWithLLM) as? Bool ?? false
+        outputFormat = defaults.string(forKey: Keys.outputFormat) ?? OutputFormat.md.rawValue
+    }
+
+    var resolvedOutputFormat: OutputFormat {
+        OutputFormat(rawValue: outputFormat) ?? .md
     }
 
     /// Explicit selection if downloaded, otherwise the first downloaded model by preference.
@@ -57,5 +66,6 @@ final class BackendSettings: ObservableObject {
         static let whisperModel = "vtmd.whisperModel"
         static let launchAtLogin = "vtmd.launchAtLogin"
         static let fixTranscriptionWithLLM = "vtmd.fixTranscriptionWithLLM"
+        static let outputFormat = "vtmd.outputFormat"
     }
 }

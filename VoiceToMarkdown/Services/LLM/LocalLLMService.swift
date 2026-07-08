@@ -30,25 +30,29 @@ final class LocalLLMService {
 
     // MARK: - Formatting
 
-    /// Streams the complete markdown document as it is generated.
+    /// Streams the complete document as it is generated.
     /// Yields cumulative, cleaned output so callers can render partials directly.
-    func formatTranscript(currentMarkdown: String, newTranscript: String, model: String) -> AsyncThrowingStream<String, Error> {
+    func formatTranscript(
+        currentDocument: String, newTranscript: String, model: String, format: OutputFormat
+    ) -> AsyncThrowingStream<String, Error> {
         streamCompletion(body: Self.buildRequestBody(
             model: model,
-            currentMarkdown: currentMarkdown,
-            newTranscript: newTranscript
+            currentDocument: currentDocument,
+            newTranscript: newTranscript,
+            format: format
         ))
     }
 
     /// Streams the complete document with a spoken edit instruction applied.
     func editDocument(
-        currentMarkdown: String, instruction: String, userFocus: String?, model: String
+        currentDocument: String, instruction: String, userFocus: String?, model: String, format: OutputFormat
     ) -> AsyncThrowingStream<String, Error> {
         streamCompletion(body: Self.buildEditRequestBody(
             model: model,
-            currentMarkdown: currentMarkdown,
+            currentDocument: currentDocument,
             instruction: instruction,
-            userFocus: userFocus
+            userFocus: userFocus,
+            format: format
         ))
     }
 
@@ -95,12 +99,13 @@ final class LocalLLMService {
 
     /// Streams only the newly formatted content to append after `recentContext`.
     func appendTranscript(
-        recentContext: String, newTranscript: String, model: String
+        recentContext: String, newTranscript: String, model: String, format: OutputFormat
     ) -> AsyncThrowingStream<String, Error> {
         streamCompletion(body: Self.buildAppendRequestBody(
             model: model,
             recentContext: recentContext,
-            newTranscript: newTranscript
+            newTranscript: newTranscript,
+            format: format
         ))
     }
 
@@ -138,62 +143,75 @@ final class LocalLLMService {
 
     // MARK: - Pure helpers (unit-tested)
 
-    static let systemPrompt = """
-    You are a voice-to-markdown formatting assistant. \
-    Each user message is a JSON object with "current_markdown" and "new_transcript" (raw speech-to-text). \
-    Clean the transcript: remove filler words and STT noise annotations like (soft music) or [silence]; \
-    fix grammar and typos while preserving the core content and ideas. \
-    Integrate the cleaned content into current_markdown, inferring the document's purpose and structuring it accordingly. \
-    Respond with ONLY the complete updated markdown document — no explanations, no code fences, no thinking out loud. /no_think
-    """
+    static func systemPrompt(for format: OutputFormat) -> String {
+        """
+        You are a voice-to-\(format.languageName) formatting assistant. \
+        Each user message is a JSON object with "current_document" and "new_transcript" (raw speech-to-text). \
+        Clean the transcript: remove filler words and STT noise annotations like (soft music) or [silence]; \
+        fix grammar and typos while preserving the core content and ideas. \
+        Integrate the cleaned content into current_document, inferring the document's purpose and structuring it accordingly. \
+        \(format.promptExpectations)
+        Respond with ONLY the complete updated document — no explanations, no code fences, no thinking out loud. /no_think
+        """
+    }
 
-    static let editSystemPrompt = """
-    You are a voice-driven markdown editing assistant. \
-    Each user message is a JSON object with "current_markdown", "new_transcript" \
-    (a spoken editing instruction, raw speech-to-text), and optionally "user_focus" \
-    (text the user currently has selected in the editor). \
-    The transcript is an INSTRUCTION to modify the document, not content to add. \
-    Interpret the instruction, applying it to the user_focus selection when present, \
-    otherwise to the most relevant part of the document. \
-    Clean STT noise from the instruction before interpreting it. \
-    Make only the requested change; leave the rest of the document untouched. \
-    Respond with ONLY the complete updated markdown document — no explanations, \
-    no code fences, no thinking out loud. /no_think
-    """
+    static func editSystemPrompt(for format: OutputFormat) -> String {
+        """
+        You are a voice-driven \(format.languageName) editing assistant. \
+        Each user message is a JSON object with "current_document", "new_transcript" \
+        (a spoken editing instruction, raw speech-to-text), and optionally "user_focus" \
+        (text the user currently has selected in the editor). \
+        The transcript is an INSTRUCTION to modify the document, not content to add. \
+        Interpret the instruction, applying it to the user_focus selection when present, \
+        otherwise to the most relevant part of the document. \
+        Clean STT noise from the instruction before interpreting it. \
+        Make only the requested change; leave the rest of the document untouched. \
+        \(format.promptExpectations)
+        Respond with ONLY the complete updated document — no explanations, \
+        no code fences, no thinking out loud. /no_think
+        """
+    }
 
-    static let appendSystemPrompt = """
-    You are a voice-to-markdown formatting assistant. \
-    Each user message is a JSON object with "recent_context" (the last few sentences \
-    of an existing markdown document, for continuity only) and "new_transcript" (raw speech-to-text). \
-    Clean the transcript: remove filler words and STT noise annotations like (soft music) or [silence]; \
-    fix grammar and typos while preserving the core content and ideas. \
-    Format it as markdown that flows naturally after recent_context. \
-    Respond with ONLY the new content to append — do NOT repeat recent_context, \
-    no explanations, no code fences, no thinking out loud. /no_think
-    """
+    static func appendSystemPrompt(for format: OutputFormat) -> String {
+        """
+        You are a voice-to-\(format.languageName) formatting assistant. \
+        Each user message is a JSON object with "recent_context" (the last few sentences \
+        of an existing \(format.languageName) document, for continuity only) and "new_transcript" (raw speech-to-text). \
+        Clean the transcript: remove filler words and STT noise annotations like (soft music) or [silence]; \
+        fix grammar and typos while preserving the core content and ideas. \
+        Format it as \(format.languageName) that flows naturally after recent_context. \
+        \(format.promptExpectations)
+        Respond with ONLY the new content to append — do NOT repeat recent_context, \
+        no explanations, no code fences, no thinking out loud. /no_think
+        """
+    }
 
-    static func buildRequestBody(model: String, currentMarkdown: String, newTranscript: String) -> [String: Any] {
-        chatBody(model: model, systemPrompt: systemPrompt, payload: [
-            "current_markdown": currentMarkdown,
+    static func buildRequestBody(
+        model: String, currentDocument: String, newTranscript: String, format: OutputFormat
+    ) -> [String: Any] {
+        chatBody(model: model, systemPrompt: systemPrompt(for: format), payload: [
+            "current_document": currentDocument,
             "new_transcript": newTranscript
         ], fallback: newTranscript)
     }
 
     static func buildEditRequestBody(
-        model: String, currentMarkdown: String, instruction: String, userFocus: String?
+        model: String, currentDocument: String, instruction: String, userFocus: String?, format: OutputFormat
     ) -> [String: Any] {
         var payload = [
-            "current_markdown": currentMarkdown,
+            "current_document": currentDocument,
             "new_transcript": instruction
         ]
         if let focus = userFocus, !focus.isEmpty {
             payload["user_focus"] = focus
         }
-        return chatBody(model: model, systemPrompt: editSystemPrompt, payload: payload, fallback: instruction)
+        return chatBody(model: model, systemPrompt: editSystemPrompt(for: format), payload: payload, fallback: instruction)
     }
 
-    static func buildAppendRequestBody(model: String, recentContext: String, newTranscript: String) -> [String: Any] {
-        chatBody(model: model, systemPrompt: appendSystemPrompt, payload: [
+    static func buildAppendRequestBody(
+        model: String, recentContext: String, newTranscript: String, format: OutputFormat
+    ) -> [String: Any] {
+        chatBody(model: model, systemPrompt: appendSystemPrompt(for: format), payload: [
             "recent_context": recentContext,
             "new_transcript": newTranscript
         ], fallback: newTranscript)
@@ -263,7 +281,9 @@ final class LocalLLMService {
 
     private static func startsNewBlock(_ text: String) -> Bool {
         guard let first = text.first else { return false }
-        if "#->*`|".contains(first) { return true }
+        // "<" covers HTML-fragment output (block tags like <p>, <ul>); a leading
+        // "<" in markdown is raw block HTML anyway.
+        if "#->*`|<".contains(first) { return true }
         let digits = text.prefix(while: \.isNumber)
         return !digits.isEmpty && text.dropFirst(digits.count).first == "."
     }

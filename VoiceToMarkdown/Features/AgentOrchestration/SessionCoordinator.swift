@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import Foundation
 
@@ -11,6 +12,15 @@ final class SessionCoordinator: ObservableObject {
     /// so recording/paused is never lost while the LLM works.
     @Published var isProcessing = false
     @Published var mode: AgentMode = .format
+    /// Persisted across launches; changing it mid-session migrates the
+    /// document file to the new extension.
+    @Published var outputFormat: OutputFormat = BackendSettings.shared.resolvedOutputFormat {
+        didSet {
+            guard outputFormat != oldValue else { return }
+            backendSettings.outputFormat = outputFormat.rawValue
+            migrateSessionDocument()
+        }
+    }
     /// Latest editor selection, read at flush time in edit mode. Not @Published —
     /// no UI reads it and it changes on every caret move.
     var editorSelection: String?
@@ -47,7 +57,7 @@ final class SessionCoordinator: ObservableObject {
         mode = .format
         editorSelection = nil
 
-        var newSession = VTMDSession(modelSize: modelSize, baseDir: fileManager.vtmdRoot)
+        var newSession = VTMDSession(modelSize: modelSize, baseDir: fileManager.vtmdRoot, format: outputFormat)
         newSession.state = .initializing
         session = newSession
 
@@ -65,8 +75,8 @@ final class SessionCoordinator: ObservableObject {
             audioService = AudioCaptureService()
             audioService?.delegate = self
 
-            startFileWatcher(mdPath: newSession.mdPath)
-            vtmdLog("SESSION", "Ready: \(baseURL.absoluteString) model=\(llmModel) md=\(newSession.mdPath.path)")
+            startFileWatcher(docPath: newSession.docPath)
+            vtmdLog("SESSION", "Ready: \(baseURL.absoluteString) model=\(llmModel) doc=\(newSession.docPath.path)")
             // No separate ready state — go straight into recording
             await beginRecording()
         } catch {
@@ -164,27 +174,55 @@ final class SessionCoordinator: ObservableObject {
 
         if let session {
             try? fileManager.writeMarkdown("", to: session.txtPath)
-            try? fileManager.writeMarkdown("", to: session.mdPath)
+            try? fileManager.writeMarkdown("", to: session.docPath)
         }
 
         session?.state = .paused
         vtmdLog("SESSION", "Session reset complete")
     }
 
-    private func startFileWatcher(mdPath: URL) {
-        fileWatcher = FileWatcher(url: mdPath) { [weak self] in
+    /// Opens the session document in the default app for its type
+    /// (e.g. the browser for .html).
+    func openPreview() {
+        guard let sess = session else { return }
+        let path = sess.docPath
+        if !FileManager.default.fileExists(atPath: path.path) {
+            try? fileManager.writeMarkdown(markdown, to: path)
+        }
+        NSWorkspace.shared.open(path)
+    }
+
+    private func startFileWatcher(docPath: URL) {
+        fileWatcher = FileWatcher(url: docPath) { [weak self] in
             Task { @MainActor in
-                guard let self, let path = self.session?.mdPath else { return }
+                guard let self, let path = self.session?.docPath else { return }
                 self.markdown = self.fileManager.readMarkdown(from: path)
             }
         }
         fileWatcher?.start()
     }
 
+    /// Mid-session format switch: move the document file to the new extension
+    /// and re-watch it. Content is not converted — the next format-mode flush
+    /// regenerates the whole document in the new format.
+    private func migrateSessionDocument() {
+        guard var sess = session else { return }
+        fileWatcher?.stop()
+        let oldPath = sess.docPath
+        sess.format = outputFormat
+        let newPath = sess.docPath
+        if FileManager.default.fileExists(atPath: oldPath.path) {
+            try? FileManager.default.moveItem(at: oldPath, to: newPath)
+        }
+        session = sess
+        startFileWatcher(docPath: newPath)
+        vtmdLog("SESSION", "Output format → \(outputFormat.rawValue): \(newPath.lastPathComponent)")
+    }
+
     // Publish, persist, unblock buffer after each formatted result.
     private func handleAgentMarkdown(_ markdown: String) async {
         self.markdown = markdown
-        if let path = session?.mdPath {
+        if let path = session?.docPath {
             try? fileManager.writeMarkdown(markdown, to: path)
         }
         let shouldFlush = await buffer.agentDone()
@@ -195,40 +233,44 @@ final class SessionCoordinator: ObservableObject {
         guard !text.isEmpty, let sess = session, let service = llmService else { return }
         isProcessing = true
         defer { isProcessing = false }
-        // Mode and selection are read once per flush so a mid-stream mode
+        // Mode, format and selection are read once per flush so a mid-stream
         // change can't corrupt an in-flight request.
         let mode = self.mode
-        vtmdLog("SESSION", "Flushing buffer (\(mode.rawValue)): \(text.prefix(120))")
+        let format = self.outputFormat
+        vtmdLog("SESSION", "Flushing buffer (\(mode.rawValue)/\(format.rawValue)): \(text.prefix(120))")
 
-        let currentMarkdown = fileManager.readMarkdown(from: sess.mdPath)
+        let currentDocument = fileManager.readMarkdown(from: sess.docPath)
         do {
             let final: String
             switch mode {
             case .format:
                 final = try await streamReplacing(service.formatTranscript(
-                    currentMarkdown: currentMarkdown,
+                    currentDocument: currentDocument,
                     newTranscript: text,
-                    model: llmModel
+                    model: llmModel,
+                    format: format
                 ))
             case .edit:
                 final = try await streamReplacing(service.editDocument(
-                    currentMarkdown: currentMarkdown,
+                    currentDocument: currentDocument,
                     instruction: text,
                     userFocus: editorSelection,
-                    model: llmModel
+                    model: llmModel,
+                    format: format
                 ))
             case .append:
-                let context = LocalLLMService.lastSentences(currentMarkdown, count: Self.appendContextSentences)
+                let context = LocalLLMService.lastSentences(currentDocument, count: Self.appendContextSentences)
                 var latest = ""
                 for try await partial in service.appendTranscript(
                     recentContext: context,
                     newTranscript: text,
-                    model: llmModel
+                    model: llmModel,
+                    format: format
                 ) {
                     latest = partial
-                    markdown = LocalLLMService.joinAppended(base: currentMarkdown, delta: partial)
+                    markdown = LocalLLMService.joinAppended(base: currentDocument, delta: partial)
                 }
-                final = LocalLLMService.joinAppended(base: currentMarkdown, delta: latest)
+                final = LocalLLMService.joinAppended(base: currentDocument, delta: latest)
             }
             vtmdLog("SESSION", "LLM response (\(final.count) chars)")
             await handleAgentMarkdown(final)

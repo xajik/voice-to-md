@@ -15,6 +15,11 @@ struct HUDBubbleView: View {
             Divider()
                 .frame(height: 20)
             modeSwitcher
+            formatPicker
+            Divider()
+                .frame(height: 20)
+                .padding(.horizontal, 4)
+            previewButton
             Divider()
                 .frame(height: 20)
                 .padding(.horizontal, 4)
@@ -132,6 +137,39 @@ struct HUDBubbleView: View {
                 modeButton(mode)
             }
         }
+    }
+
+    private var formatPicker: some View {
+        Menu {
+            Picker("Output Format", selection: Binding(
+                get: { viewModel.outputFormat },
+                set: { viewModel.outputFormat = $0 }
+            )) {
+                ForEach(OutputFormat.allCases, id: \.self) { format in
+                    Text(format.displayName).tag(format)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Text(viewModel.outputFormat.rawValue.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Output format")
+    }
+
+    private var previewButton: some View {
+        Button(action: { viewModel.openPreview() }) {
+            Image(systemName: "eye")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(viewModel.canPreview ? Color.secondary : Color.secondary.opacity(0.4))
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.canPreview)
+        .help("Preview in default app")
     }
 
     private func modeButton(_ mode: AgentMode) -> some View {

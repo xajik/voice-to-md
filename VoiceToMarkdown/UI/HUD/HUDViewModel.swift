@@ -17,8 +17,15 @@ final class HUDViewModel: ObservableObject {
         get { coordinator.mode }
         set { coordinator.mode = newValue }
     }
+    var outputFormat: OutputFormat {
+        get { coordinator.outputFormat }
+        set { coordinator.outputFormat = newValue }
+    }
     var canSend: Bool {
         coordinator.session?.state == .recording && !coordinator.isProcessing
+    }
+    var canPreview: Bool {
+        coordinator.session != nil
     }
 
     init(coordinator: SessionCoordinator) {
@@ -59,5 +66,9 @@ final class HUDViewModel: ObservableObject {
 
     func resetSession() {
         Task { await coordinator.resetSession() }
+    }
+
+    func openPreview() {
+        coordinator.openPreview()
     }
 }

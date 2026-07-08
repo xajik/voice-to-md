@@ -18,8 +18,9 @@ final class LocalLLMServiceTests: XCTestCase {
     func testBuildRequestBodyStructure() throws {
         let body = LocalLLMService.buildRequestBody(
             model: "test-model",
-            currentMarkdown: "# Doc",
-            newTranscript: "hello world"
+            currentDocument: "# Doc",
+            newTranscript: "hello world",
+            format: .md
         )
         XCTAssertEqual(body["model"] as? String, "test-model")
         XCTAssertEqual(body["stream"] as? Bool, true)
@@ -33,30 +34,33 @@ final class LocalLLMServiceTests: XCTestCase {
         let payload = try XCTUnwrap(
             JSONSerialization.jsonObject(with: Data(userContent.utf8)) as? [String: String]
         )
-        XCTAssertEqual(payload["current_markdown"], "# Doc")
+        XCTAssertEqual(payload["current_document"], "# Doc")
         XCTAssertEqual(payload["new_transcript"], "hello world")
     }
 
     func testRequestBodyIsSerializable() {
-        let body = LocalLLMService.buildRequestBody(model: "m", currentMarkdown: "", newTranscript: "text")
+        let body = LocalLLMService.buildRequestBody(
+            model: "m", currentDocument: "", newTranscript: "text", format: .md
+        )
         XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: body))
     }
 
     func testBuildEditRequestBodyStructure() throws {
         let body = LocalLLMService.buildEditRequestBody(
             model: "test-model",
-            currentMarkdown: "# Doc",
+            currentDocument: "# Doc",
             instruction: "change the title",
-            userFocus: "# Doc"
+            userFocus: "# Doc",
+            format: .md
         )
         let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
-        XCTAssertEqual(messages[0]["content"], LocalLLMService.editSystemPrompt)
+        XCTAssertEqual(messages[0]["content"], LocalLLMService.editSystemPrompt(for: .md))
 
         let userContent = try XCTUnwrap(messages[1]["content"])
         let payload = try XCTUnwrap(
             JSONSerialization.jsonObject(with: Data(userContent.utf8)) as? [String: String]
         )
-        XCTAssertEqual(payload["current_markdown"], "# Doc")
+        XCTAssertEqual(payload["current_document"], "# Doc")
         XCTAssertEqual(payload["new_transcript"], "change the title")
         XCTAssertEqual(payload["user_focus"], "# Doc")
     }
@@ -64,7 +68,7 @@ final class LocalLLMServiceTests: XCTestCase {
     func testBuildEditRequestBodyOmitsFocusWhenAbsent() throws {
         for focus in [nil, ""] {
             let body = LocalLLMService.buildEditRequestBody(
-                model: "m", currentMarkdown: "# Doc", instruction: "fix it", userFocus: focus
+                model: "m", currentDocument: "# Doc", instruction: "fix it", userFocus: focus, format: .md
             )
             let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
             let userContent = try XCTUnwrap(messages[1]["content"])
@@ -79,10 +83,11 @@ final class LocalLLMServiceTests: XCTestCase {
         let body = LocalLLMService.buildAppendRequestBody(
             model: "test-model",
             recentContext: "Last sentence.",
-            newTranscript: "more words"
+            newTranscript: "more words",
+            format: .md
         )
         let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
-        XCTAssertEqual(messages[0]["content"], LocalLLMService.appendSystemPrompt)
+        XCTAssertEqual(messages[0]["content"], LocalLLMService.appendSystemPrompt(for: .md))
 
         let userContent = try XCTUnwrap(messages[1]["content"])
         let payload = try XCTUnwrap(
@@ -90,7 +95,35 @@ final class LocalLLMServiceTests: XCTestCase {
         )
         XCTAssertEqual(payload["recent_context"], "Last sentence.")
         XCTAssertEqual(payload["new_transcript"], "more words")
-        XCTAssertNil(payload["current_markdown"])
+        XCTAssertNil(payload["current_document"])
+    }
+
+    // MARK: - Format-aware system prompts
+
+    func testSystemPromptsIncludeFormatExpectationsPerModeAndFormat() throws {
+        for format in OutputFormat.allCases {
+            let prompts = [
+                LocalLLMService.systemPrompt(for: format),
+                LocalLLMService.editSystemPrompt(for: format),
+                LocalLLMService.appendSystemPrompt(for: format)
+            ]
+            for prompt in prompts {
+                XCTAssertTrue(prompt.contains(format.promptExpectations),
+                              "\(format.rawValue) expectations missing from prompt")
+                XCTAssertTrue(prompt.hasSuffix("/no_think"),
+                              "\(format.rawValue) prompt must end with /no_think")
+            }
+        }
+    }
+
+    func testBuildersUseSelectedFormatPrompt() throws {
+        for format in OutputFormat.allCases {
+            let body = LocalLLMService.buildRequestBody(
+                model: "m", currentDocument: "doc", newTranscript: "t", format: format
+            )
+            let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
+            XCTAssertEqual(messages[0]["content"], LocalLLMService.systemPrompt(for: format))
+        }
     }
 
     // MARK: - lastSentences
@@ -148,6 +181,13 @@ final class LocalLLMServiceTests: XCTestCase {
         XCTAssertEqual(
             LocalLLMService.joinAppended(base: "Prose.", delta: "1. first item"),
             "Prose.\n\n1. first item"
+        )
+    }
+
+    func testJoinAppendedHTMLFragmentStartsNewParagraph() {
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "<p>First.</p>", delta: "<p>Second.</p>"),
+            "<p>First.</p>\n\n<p>Second.</p>"
         )
     }
 

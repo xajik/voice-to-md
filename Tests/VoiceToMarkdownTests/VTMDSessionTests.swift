@@ -9,8 +9,8 @@ final class VTMDSessionTests: XCTestCase {
         baseDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     }
 
-    private func makeSession(model: ModelSize = .base) -> VTMDSession {
-        VTMDSession(modelSize: model, baseDir: baseDir)
+    private func makeSession(model: ModelSize = .base, format: OutputFormat = .md) -> VTMDSession {
+        VTMDSession(modelSize: model, baseDir: baseDir, format: format)
     }
 
     // MARK: - id
@@ -52,16 +52,24 @@ final class VTMDSessionTests: XCTestCase {
         XCTAssertTrue(session.dirPath.path.hasPrefix(baseDir.path))
     }
 
-    // MARK: - txtPath / mdPath
+    // MARK: - txtPath / docPath
 
     func testTxtPathExtension() {
         let session = makeSession()
         XCTAssertEqual(session.txtPath.pathExtension, "txt")
     }
 
-    func testMdPathExtension() {
-        let session = makeSession()
-        XCTAssertEqual(session.mdPath.pathExtension, "md")
+    func testDocPathExtensionMatchesFormat() {
+        for format in OutputFormat.allCases {
+            let session = makeSession(format: format)
+            XCTAssertEqual(session.docPath.pathExtension, format.fileExtension)
+        }
+    }
+
+    func testDocPathFollowsFormatChange() {
+        var session = makeSession(format: .md)
+        session.format = .html
+        XCTAssertEqual(session.docPath.pathExtension, "html")
     }
 
     func testTxtPathContainsId() {
@@ -69,14 +77,14 @@ final class VTMDSessionTests: XCTestCase {
         XCTAssertTrue(session.txtPath.lastPathComponent.contains(session.id))
     }
 
-    func testMdPathContainsId() {
+    func testDocPathContainsId() {
         let session = makeSession()
-        XCTAssertTrue(session.mdPath.lastPathComponent.contains(session.id))
+        XCTAssertTrue(session.docPath.lastPathComponent.contains(session.id))
     }
 
-    func testTxtAndMdPathShareDirectory() {
+    func testTxtAndDocPathShareDirectory() {
         let session = makeSession()
-        XCTAssertEqual(session.txtPath.deletingLastPathComponent(), session.mdPath.deletingLastPathComponent())
+        XCTAssertEqual(session.txtPath.deletingLastPathComponent(), session.docPath.deletingLastPathComponent())
     }
 
     // MARK: - initial state
