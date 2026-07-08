@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 
 @MainActor
@@ -24,6 +25,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupDictationPanel()
         checkAccessibilityPermission()
         startGlobalDictation()
+        applyLaunchAtLogin(BackendSettings.shared.launchAtLogin)
+
+        BackendSettings.shared.$launchAtLogin
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                Task { @MainActor in self?.applyLaunchAtLogin(enabled) }
+            }
+            .store(in: &cancellables)
 
         // Re-load the whisper model when the Settings selection changes.
         // @Published emits on willSet, so hop to the next runloop turn to
@@ -52,6 +62,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private func applyLaunchAtLogin(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                if service.status != .enabled { try service.register() }
+            } else if service.status == .enabled {
+                try service.unregister()
+            }
+        } catch {
+            vtmdLog("APP", "Launch at login \(enabled ? "register" : "unregister") failed: \(error.localizedDescription)")
+        }
     }
 
     private func restartDictationIfActive() {

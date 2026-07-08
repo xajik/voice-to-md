@@ -10,6 +10,15 @@ struct ModelSelectorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text("General")
+                .font(.title2.weight(.semibold))
+
+            Toggle("Launch at login", isOn: $backend.launchAtLogin)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+            Divider()
+
             Text("Local LLM")
                 .font(.title2.weight(.semibold))
 

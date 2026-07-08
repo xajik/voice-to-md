@@ -15,6 +15,11 @@ final class BackendSettings: ObservableObject {
     @Published var whisperModel: String {
         didSet { defaults.set(whisperModel, forKey: Keys.whisperModel) }
     }
+    /// Register the app as a login item. Persisted preference only —
+    /// AppDelegate applies it via SMAppService. Defaults to on.
+    @Published var launchAtLogin: Bool {
+        didSet { defaults.set(launchAtLogin, forKey: Keys.launchAtLogin) }
+    }
 
     private let defaults: UserDefaults
 
@@ -23,6 +28,7 @@ final class BackendSettings: ObservableObject {
         localAPIBaseURL = defaults.string(forKey: Keys.localAPIBaseURL) ?? BackendSettings.defaultBaseURL
         localModel = defaults.string(forKey: Keys.localModel) ?? ""
         whisperModel = defaults.string(forKey: Keys.whisperModel) ?? ""
+        launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? true
     }
 
     /// Explicit selection if downloaded, otherwise the first downloaded model by preference.
@@ -43,5 +49,6 @@ final class BackendSettings: ObservableObject {
         static let localAPIBaseURL = "vtmd.localAPIBaseURL"
         static let localModel = "vtmd.localModel"
         static let whisperModel = "vtmd.whisperModel"
+        static let launchAtLogin = "vtmd.launchAtLogin"
     }
 }
