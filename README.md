@@ -22,6 +22,27 @@ A macOS menu-bar app that turns your voice into structured markdown using [whisp
 
   <img src="demo/status-bar.jpg" alt="Menu bar" width="420"/>
 
+## 🎛️ Agent Mode control panel
+
+Everything in Agent Mode is driven from one floating, draggable capsule that hovers over the editor:
+
+<img src="demo/agent-mode-control-panel.jpg" alt="Agent Mode control panel: send, mic, status, and the Format / Edit / Append mode switcher" width="420"/>
+
+Left to right:
+
+- **✈️ Send (`⌘↩`)** — don't wait for the auto-flush: transcribe whatever you just said and send it to the LLM *right now*. Enabled while recording and idle (no LLM call in flight).
+- **🎙️ Mic** — start, pause, and resume the session. Red pulse = listening.
+- **Status** — `Recording` / `Processing` / `Paused` at a glance, with errors surfaced inline.
+- **Mode switcher** — how your voice is applied to the document:
+
+| Mode | Icon | What it does |
+|---|---|---|
+| **Format** (default) | 📄 | The whole document + your new words go to the LLM, which returns the complete restructured document. Best for free-form dictation where the model keeps improving the overall structure. |
+| **Edit** | ✏️ | Your voice is an **instruction**, not content: *"change the subtitle to Weekly Notes"*, *"turn that list into a table"*. Select text in the editor first and the model treats it as the focus of the edit. |
+| **Append** | ➕ | Speed mode for long documents: only the **last 3 sentences** + your new words are sent, and the model returns just the new content, which is appended. The LLM never re-reads the whole file, so latency stays flat as the document grows. |
+
+The flow underneath: audio is transcribed by whisper.cpp in ~4 s chunks and buffered; once ~30 words accumulate (or you pause for 5 s, or hit **Send**), the buffer is flushed to the LLM using the prompt for the current mode — and tokens stream straight into the editor.
+
 ## 🚀 Quick Start
 
 ```bash

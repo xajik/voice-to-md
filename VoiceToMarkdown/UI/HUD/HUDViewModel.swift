@@ -13,6 +13,13 @@ final class HUDViewModel: ObservableObject {
     }
     var transcript: String { coordinator.transcript }
     var errorMessage: String? { coordinator.error }
+    var mode: AgentMode {
+        get { coordinator.mode }
+        set { coordinator.mode = newValue }
+    }
+    var canSend: Bool {
+        coordinator.session?.state == .recording && !coordinator.isProcessing
+    }
 
     init(coordinator: SessionCoordinator) {
         self.coordinator = coordinator
@@ -36,6 +43,10 @@ final class HUDViewModel: ObservableObject {
 
     func startRecording() {
         coordinator.startRecording()
+    }
+
+    func sendNow() {
+        coordinator.flushNow()
     }
 
     func pauseRecording() {

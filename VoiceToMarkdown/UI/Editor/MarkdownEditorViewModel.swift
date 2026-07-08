@@ -25,4 +25,8 @@ final class MarkdownEditorViewModel: ObservableObject {
             try? VTMDFileManager.shared.writeMarkdown(text, to: mdPath)
         }
     }
+
+    func selectionDidChange(_ selected: String?) {
+        coordinator.editorSelection = selected
+    }
 }

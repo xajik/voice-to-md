@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Minimal floating control: one mic button + session status. Draggable.
+/// Minimal floating control: mic button + session status + agent-mode toggles. Draggable.
 struct HUDBubbleView: View {
     @ObservedObject var viewModel: HUDViewModel
     @State private var offset: CGSize = .zero
@@ -8,8 +8,12 @@ struct HUDBubbleView: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            sendButton
             micButton
             stateLabel
+            Divider()
+                .frame(height: 20)
+            modeSwitcher
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -29,6 +33,19 @@ struct HUDBubbleView: View {
         )
     }
 
+    private var sendButton: some View {
+        Button(action: { viewModel.sendNow() }) {
+            Image(systemName: "paperplane.fill")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(viewModel.canSend ? Color.accentColor : Color.secondary.opacity(0.5))
+                .frame(width: 24, height: 24)
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.canSend)
+        .keyboardShortcut(.return, modifiers: .command)
+        .help("Send (⌘↩)")
+    }
+
     private var micButton: some View {
         Button(action: handleMicTap) {
             Image(systemName: micIconName)
@@ -37,6 +54,16 @@ struct HUDBubbleView: View {
                 .frame(width: 24, height: 24)
         }
         .buttonStyle(.plain)
+        .help(micHelp)
+    }
+
+    private var micHelp: String {
+        switch viewModel.sessionState {
+        case .idle: return "Start"
+        case .recording: return "Pause"
+        case .paused: return "Resume"
+        default: return "Busy"
+        }
     }
 
     private var micIconName: String {
@@ -69,6 +96,33 @@ struct HUDBubbleView: View {
                     .lineLimit(1)
             }
         }
+        .help("Status")
+    }
+
+    private var modeSwitcher: some View {
+        HStack(spacing: 4) {
+            ForEach(AgentMode.allCases, id: \.self) { mode in
+                modeButton(mode)
+            }
+        }
+    }
+
+    private func modeButton(_ mode: AgentMode) -> some View {
+        let isActive = viewModel.mode == mode
+        return Button {
+            viewModel.mode = mode
+        } label: {
+            Image(systemName: mode.iconName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isActive ? Color.accentColor : Color.secondary)
+                .frame(width: 22, height: 22)
+                .background(
+                    isActive ? Color.accentColor.opacity(0.15) : .clear,
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(mode.displayName)
     }
 
     private func handleMicTap() {

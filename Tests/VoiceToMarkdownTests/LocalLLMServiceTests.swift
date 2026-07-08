@@ -42,6 +42,122 @@ final class LocalLLMServiceTests: XCTestCase {
         XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: body))
     }
 
+    func testBuildEditRequestBodyStructure() throws {
+        let body = LocalLLMService.buildEditRequestBody(
+            model: "test-model",
+            currentMarkdown: "# Doc",
+            instruction: "change the title",
+            userFocus: "# Doc"
+        )
+        let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
+        XCTAssertEqual(messages[0]["content"], LocalLLMService.editSystemPrompt)
+
+        let userContent = try XCTUnwrap(messages[1]["content"])
+        let payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(userContent.utf8)) as? [String: String]
+        )
+        XCTAssertEqual(payload["current_markdown"], "# Doc")
+        XCTAssertEqual(payload["new_transcript"], "change the title")
+        XCTAssertEqual(payload["user_focus"], "# Doc")
+    }
+
+    func testBuildEditRequestBodyOmitsFocusWhenAbsent() throws {
+        for focus in [nil, ""] {
+            let body = LocalLLMService.buildEditRequestBody(
+                model: "m", currentMarkdown: "# Doc", instruction: "fix it", userFocus: focus
+            )
+            let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
+            let userContent = try XCTUnwrap(messages[1]["content"])
+            let payload = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: Data(userContent.utf8)) as? [String: String]
+            )
+            XCTAssertNil(payload["user_focus"])
+        }
+    }
+
+    func testBuildAppendRequestBodyStructure() throws {
+        let body = LocalLLMService.buildAppendRequestBody(
+            model: "test-model",
+            recentContext: "Last sentence.",
+            newTranscript: "more words"
+        )
+        let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
+        XCTAssertEqual(messages[0]["content"], LocalLLMService.appendSystemPrompt)
+
+        let userContent = try XCTUnwrap(messages[1]["content"])
+        let payload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(userContent.utf8)) as? [String: String]
+        )
+        XCTAssertEqual(payload["recent_context"], "Last sentence.")
+        XCTAssertEqual(payload["new_transcript"], "more words")
+        XCTAssertNil(payload["current_markdown"])
+    }
+
+    // MARK: - lastSentences
+
+    func testLastSentencesTakesSuffix() {
+        let text = "One. Two! Three? Four. Five."
+        XCTAssertEqual(LocalLLMService.lastSentences(text, count: 3), "Three? Four. Five.")
+    }
+
+    func testLastSentencesReturnsWholeTextWhenFewer() {
+        XCTAssertEqual(LocalLLMService.lastSentences("Only one.", count: 3), "Only one.")
+    }
+
+    func testLastSentencesEmptyText() {
+        XCTAssertEqual(LocalLLMService.lastSentences("", count: 3), "")
+        XCTAssertEqual(LocalLLMService.lastSentences("   \n ", count: 3), "")
+    }
+
+    func testLastSentencesTreatsNewlineAsBoundary() {
+        let text = "# Heading\nFirst line prose. Second sentence."
+        XCTAssertEqual(LocalLLMService.lastSentences(text, count: 2), "First line prose. Second sentence.")
+    }
+
+    func testLastSentencesHandlesMissingTerminalPunctuation() {
+        let text = "One. Two. Three with no period"
+        XCTAssertEqual(LocalLLMService.lastSentences(text, count: 2), "Two. Three with no period")
+    }
+
+    // MARK: - joinAppended
+
+    func testJoinAppendedEmptyBase() {
+        XCTAssertEqual(LocalLLMService.joinAppended(base: "", delta: "New text."), "New text.")
+    }
+
+    func testJoinAppendedEmptyDelta() {
+        XCTAssertEqual(LocalLLMService.joinAppended(base: "# Doc", delta: "  \n"), "# Doc")
+    }
+
+    func testJoinAppendedProseContinuesInline() {
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "First sentence.", delta: "Second sentence."),
+            "First sentence. Second sentence."
+        )
+    }
+
+    func testJoinAppendedBlockStartsNewParagraph() {
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "Prose.", delta: "## Section"),
+            "Prose.\n\n## Section"
+        )
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "Prose.", delta: "- bullet"),
+            "Prose.\n\n- bullet"
+        )
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "Prose.", delta: "1. first item"),
+            "Prose.\n\n1. first item"
+        )
+    }
+
+    func testJoinAppendedTrimsBaseTrailingWhitespace() {
+        XCTAssertEqual(
+            LocalLLMService.joinAppended(base: "Prose.\n\n", delta: "More prose."),
+            "Prose. More prose."
+        )
+    }
+
     // MARK: - SSE parsing
 
     func testParseSSELineExtractsDelta() {

@@ -184,7 +184,8 @@ pre code { background: none; padding: 0; }
   border-top: 1px solid var(--hairline);
 }
 .raw-pane .filler { color: var(--ink-3); font-style: italic; }
-/* HUD bubble replica, bottom-right of the window — like the real app */
+/* HUD control-panel replica, bottom-right of the window — like the real app:
+   send · mic · status · | · Format / Edit / Append */
 .hud-bubble {
   position: absolute; right: 22px; bottom: 108px;
   display: flex; align-items: center; gap: 8px;
@@ -196,6 +197,15 @@ pre code { background: none; padding: 0; }
   font-size: 11.5px; font-weight: 600;
 }
 .hud-bubble .state { min-width: 74px; }
+.hud-bubble .hud-send { width: 15px; height: 15px; fill: var(--grad-a-lite); flex: none; }
+.hud-bubble .hud-sep { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.16); flex: none; }
+.hud-mode {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: grid; place-items: center; flex: none;
+}
+.hud-mode svg { width: 12px; height: 12px; fill: var(--ink-2); }
+.hud-mode.active { background: rgba(77, 115, 250, 0.28); }
+.hud-mode.active svg { fill: var(--grad-a-lite); }
 .demo-caption { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: 18px; }
 
 /* mic icon + pulse */
@@ -408,6 +418,28 @@ pre code { background: none; padding: 0; }
 .settings-mock .dot-g { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
 .settings-mock .sep { height: 1px; background: var(--hairline); margin: 8px 0; }
 
+/* ---------- agent-mode control panel ---------- */
+.panel-shot {
+  display: block;
+  width: min(420px, 100%);
+  margin: 26px auto 0;
+  border-radius: 16px;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.panel-caption { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: 14px; }
+.flow-steps { margin-top: 30px; display: grid; gap: 8px; color: var(--ink-2); font-size: 15px; list-style: none; counter-reset: step; }
+.flow-steps li { counter-increment: step; }
+.flow-steps li::before {
+  content: counter(step);
+  display: inline-grid; place-items: center;
+  width: 20px; height: 20px; margin-right: 10px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, var(--grad-a), var(--grad-b));
+  color: #fff; font-size: 11.5px; font-weight: 700;
+}
+.flow-steps strong { color: var(--ink); }
+
 /* ---------- dependencies ---------- */
 .dep-block { margin-top: 26px; }
 .dep-block pre {
@@ -479,8 +511,13 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       </div>
       <div class="editor" id="md-out" aria-live="off"></div>
       <div class="hud-bubble" aria-hidden="true">
+        <svg class="hud-send" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
         <span class="mic-wrap"><span class="mic-pulse"></span><svg class="mic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
         <span class="state" id="hud-state">Recording</span>
+        <span class="hud-sep"></span>
+        <span class="hud-mode active" title="Format"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+        <span class="hud-mode" title="Edit"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
+        <span class="hud-mode" title="Append"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg></span>
       </div>
       <div class="raw-bar"><span aria-hidden="true">⌃</span> Raw input <span class="count" id="raw-count"></span></div>
       <div class="raw-pane" id="raw-out"></div>
@@ -561,6 +598,46 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       </article>
 
     </div>
+  </div>
+</section>
+
+<section id="control-panel">
+  <div class="wrap">
+    <h2>🎛️ Agent Mode control panel</h2>
+    <p class="kicker">One floating, draggable capsule drives the whole session — and decides <em>how</em> your voice lands in the document.</p>
+
+    <img class="panel-shot" src="/assets/agent-mode-control-panel.jpg" alt="Agent Mode control panel: send button, mic, Recording status, and the Format / Edit / Append mode switcher" width="510" height="152" loading="lazy">
+    <p class="panel-caption">The real thing — send · mic · status · Format / Edit / Append.</p>
+
+    <div class="servers">
+      <article class="server">
+        <h4>✈️ Send <small>· ⌘↩</small></h4>
+        <p class="note">Flush immediately: transcribe what you just said and send it to the LLM now, instead of waiting for the word threshold or a pause. Enabled while recording and no call is in flight.</p>
+      </article>
+      <article class="server">
+        <h4>🎙️ Mic &amp; status</h4>
+        <p class="note">Start, pause, resume. The label tells you what's happening — <strong>Recording</strong>, <strong>Processing</strong>, <strong>Paused</strong> — with errors surfaced inline.</p>
+      </article>
+      <article class="server">
+        <h4>📄 Format <small>· default</small></h4>
+        <p class="note">Whole document + new words go to the LLM; it returns the complete restructured document. Best for free-form dictation — the model keeps improving the structure as you talk.</p>
+      </article>
+      <article class="server">
+        <h4>✏️ Edit</h4>
+        <p class="note">Your voice becomes an <strong>instruction</strong>: “change the subtitle to Weekly Notes”, “turn that list into a table”. Select text in the editor first and the edit focuses on it.</p>
+      </article>
+      <article class="server">
+        <h4>➕ Append</h4>
+        <p class="note">Speed mode for long documents: only the <strong>last 3 sentences</strong> + your new words are sent; the model returns just the new content, appended. Latency stays flat as the file grows.</p>
+      </article>
+    </div>
+
+    <ol class="flow-steps" aria-label="How a flush works">
+      <li><strong>You speak.</strong> Audio is transcribed on-device by whisper.cpp in ~4-second chunks.</li>
+      <li><strong>Words buffer up.</strong> At ~30 words, after a 5-second pause, or the moment you hit <strong>Send</strong>, the buffer flushes.</li>
+      <li><strong>The mode picks the prompt.</strong> Format rewrites the whole document, Edit applies your instruction (to the selection, if any), Append formats only what's new.</li>
+      <li><strong>Tokens stream straight into the editor</strong> — and the markdown file on disk is updated after every flush.</li>
+    </ol>
   </div>
 </section>
 

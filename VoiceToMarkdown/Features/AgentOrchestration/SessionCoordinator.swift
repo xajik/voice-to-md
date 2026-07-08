@@ -10,6 +10,10 @@ final class SessionCoordinator: ObservableObject {
     /// True while a formatting call is in flight; orthogonal to session.state
     /// so recording/paused is never lost while the LLM works.
     @Published var isProcessing = false
+    @Published var mode: AgentMode = .format
+    /// Latest editor selection, read at flush time in edit mode. Not @Published —
+    /// no UI reads it and it changes on every caret move.
+    var editorSelection: String?
 
     private let fileManager = VTMDFileManager.shared
     private let backendSettings = BackendSettings.shared
@@ -40,6 +44,8 @@ final class SessionCoordinator: ObservableObject {
         transcript = ""
         markdown = ""
         error = nil
+        mode = .format
+        editorSelection = nil
 
         var newSession = VTMDSession(modelSize: modelSize, baseDir: fileManager.vtmdRoot)
         newSession.state = .initializing
@@ -93,6 +99,15 @@ final class SessionCoordinator: ObservableObject {
             self.error = error.localizedDescription
             session?.state = .paused
         }
+    }
+
+    /// Manual flush: transcribe captured audio and send the buffer to the LLM
+    /// immediately, without waiting for the word threshold or silence.
+    func flushNow() {
+        guard session?.state == .recording, !isProcessing else { return }
+        vtmdLog("SESSION", "Manual flush requested")
+        drainPendingAudio()
+        enqueueAfterTranscription { $0.launchFlush() }
     }
 
     func pauseRecording() {
@@ -152,26 +167,60 @@ final class SessionCoordinator: ObservableObject {
         guard !text.isEmpty, let sess = session, let service = llmService else { return }
         isProcessing = true
         defer { isProcessing = false }
-        vtmdLog("SESSION", "Flushing buffer: \(text.prefix(120))")
+        // Mode and selection are read once per flush so a mid-stream mode
+        // change can't corrupt an in-flight request.
+        let mode = self.mode
+        vtmdLog("SESSION", "Flushing buffer (\(mode.rawValue)): \(text.prefix(120))")
 
         let currentMarkdown = fileManager.readMarkdown(from: sess.mdPath)
         do {
-            var latest = ""
-            for try await partial in service.formatTranscript(
-                currentMarkdown: currentMarkdown,
-                newTranscript: text,
-                model: llmModel
-            ) {
-                latest = partial
-                markdown = partial // streamed into the editor as tokens arrive
+            let final: String
+            switch mode {
+            case .format:
+                final = try await streamReplacing(service.formatTranscript(
+                    currentMarkdown: currentMarkdown,
+                    newTranscript: text,
+                    model: llmModel
+                ))
+            case .edit:
+                final = try await streamReplacing(service.editDocument(
+                    currentMarkdown: currentMarkdown,
+                    instruction: text,
+                    userFocus: editorSelection,
+                    model: llmModel
+                ))
+            case .append:
+                let context = LocalLLMService.lastSentences(currentMarkdown, count: Self.appendContextSentences)
+                var latest = ""
+                for try await partial in service.appendTranscript(
+                    recentContext: context,
+                    newTranscript: text,
+                    model: llmModel
+                ) {
+                    latest = partial
+                    markdown = LocalLLMService.joinAppended(base: currentMarkdown, delta: partial)
+                }
+                final = LocalLLMService.joinAppended(base: currentMarkdown, delta: latest)
             }
-            vtmdLog("SESSION", "LLM response (\(latest.count) chars)")
-            await handleAgentMarkdown(latest)
+            vtmdLog("SESSION", "LLM response (\(final.count) chars)")
+            await handleAgentMarkdown(final)
         } catch {
             vtmdLog("SESSION", "LLM error: \(error.localizedDescription)")
             self.error = error.localizedDescription
             _ = await buffer.agentDone()
         }
+    }
+
+    private static let appendContextSentences = 3
+
+    /// Streams a full-document response into the editor as tokens arrive.
+    private func streamReplacing(_ stream: AsyncThrowingStream<String, Error>) async throws -> String {
+        var latest = ""
+        for try await partial in stream {
+            latest = partial
+            markdown = partial
+        }
+        return latest
     }
 
     private func flushBuffer() async {
