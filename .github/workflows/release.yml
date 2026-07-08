@@ -4,13 +4,14 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    name: Build, Sign, Notarize & Release
+    name: Build, Ad-Hoc Sign & Release
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -20,86 +21,41 @@ jobs:
       BUNDLE_ID: com.vtmd.voicetomarkdown
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select Xcode Version
         run: sudo xcode-select -switch /Applications/Xcode.app
 
-      - name: Install tools
+      - name: Install Build Tools
         run: |
           brew install xcodegen create-dmg
 
-      - name: Generate Xcode project
+      - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Import signing certificate
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
-          echo "$CERTIFICATE_BASE64" | base64 --decode > /tmp/certificate.p12
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import /tmp/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-      - name: Build Release
-        env:
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Build Archive (Ad-Hoc Signed)
         run: |
           xcodebuild \
             -scheme "$SCHEME" \
             -configuration Release \
             -derivedDataPath .build \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Developer ID Application" \
-            ENABLE_HARDENED_RUNTIME=YES \
+            CODE_SIGNING_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
             archive \
             -archivePath .build/VoiceToMarkdown.xcarchive | xcpretty
 
-      - name: Export app
+      - name: Extract App Binary
         run: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>developer-id</string>
-            <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID }}</string>
-          </dict>
-          </plist>
-          EOF
+          mkdir -p .build/export
+          cp -R .build/VoiceToMarkdown.xcarchive/Products/Applications/$APP_NAME.app .build/export/$APP_NAME.app
 
-          xcodebuild -exportArchive \
-            -archivePath .build/VoiceToMarkdown.xcarchive \
-            -exportPath .build/export \
-            -exportOptionsPlist ExportOptions.plist | xcpretty
-
-      - name: Notarize
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          xcrun notarytool submit ".build/export/$APP_NAME.app" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-
-          xcrun stapler staple ".build/export/$APP_NAME.app"
-
-      - name: Create DMG
+      - name: Create DMG Packaging
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          # Fallback version if triggered manually via workflow_dispatch
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then VERSION="1.0.0"; fi
+          
           create-dmg \
             --volname "$APP_NAME $VERSION" \
             --window-pos 200 120 \
@@ -111,11 +67,10 @@ jobs:
             ".build/$APP_NAME-$VERSION.dmg" \
             ".build/export/$APP_NAME.app"
 
-          xcrun stapler staple ".build/$APP_NAME-$VERSION.dmg"
           echo "DMG_PATH=.build/$APP_NAME-$VERSION.dmg" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Generate appcast
+      - name: Generate Sparkle Appcast
         run: |
           cat > appcast.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
@@ -135,25 +90,24 @@ jobs:
           </rss>
           EOF
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "VoiceToMarkdown ${{ env.VERSION }}"
           body: |
             ## VoiceToMarkdown ${{ env.VERSION }}
 
-            ### Installation
-            1. Download `VoiceToMarkdown-${{ env.VERSION }}.dmg`
-            2. Open and drag to Applications
-            3. On first launch, grant Microphone and Accessibility permissions
+            ### ⚠️ Bypass Gatekeeper (Required)
+            Because this is an open-source build without an Apple Developer signature, macOS will prevent it from launching normally at first.
+            
+            1. Download and open `VoiceToMarkdown-${{ env.VERSION }}.dmg`.
+            2. Drag the app to your **Applications** folder.
+            3. **Do not double-click the app to open it.** Instead, **Right-click (or Control-click)** the app icon and select **Open**.
+            4. Click **Open** on the confirmation prompt. You only need to do this once!
 
             ### Requirements
             - macOS 13.0+
-            - `brew install whisper-cpp ffmpeg tmux`
+            - Dependencies: `brew install whisper-cpp ffmpeg tmux`
           files: |
             ${{ env.DMG_PATH }}
             appcast.xml
-
-      - name: Cleanup keychain
-        if: always()
-        run: security delete-keychain $RUNNER_TEMP/signing.keychain-db || true
