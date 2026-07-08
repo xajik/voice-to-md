@@ -43,6 +43,13 @@ build:
 		-derivedDataPath $(BUILD_DIR) \
 		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
 		build
+	@codesign --force --deep \
+		--entitlements VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements \
+		-s - \
+		"$(APP_PATH)" 2>/dev/null; \
+	if [ $$? -eq 0 ]; then \
+		echo "  Signed with entitlements."; \
+	fi
 
 build-debug:
 	xcodebuild \
@@ -51,6 +58,13 @@ build-debug:
 		-derivedDataPath $(BUILD_DIR) \
 		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
 		build 2>&1 | xcpretty || true
+	@if [ -d "$(BUILD_DIR)/Build/Products/Debug/VoiceToMarkdown.app" ]; then \
+		echo "  Signing with entitlements..."; \
+		codesign --force --deep \
+			--entitlements VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements \
+			-s - \
+			"$(BUILD_DIR)/Build/Products/Debug/VoiceToMarkdown.app"; \
+	fi
 
 run: build
 	@echo "Launching $(APP_PATH)..."

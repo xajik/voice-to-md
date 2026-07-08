@@ -5,34 +5,43 @@ struct DictationHUDView: View {
     @ObservedObject var manager: GlobalDictationManager
 
     var body: some View {
-        HStack(spacing: 14) {
-            micIndicator
-            VStack(alignment: .leading, spacing: 1) {
-                Text(statusText)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.primary)
-                Text(manager.phase == .listening ? "Pause to finish, or press ⌘⌥] again" : "Typing at your cursor when done")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(action: { manager.requestStop() }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 9, weight: .semibold))
-                    Text("⌘⌥]")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                micIndicator
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(statusText)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.primary)
+                    if let error = manager.lastError {
+                        Text(error)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.red)
+                            .lineLimit(2)
+                    } else {
+                        Text(manager.phase == .listening ? "Pause to finish, or press ⌘⌥] again" : "Typing at your cursor when done")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
+                Spacer()
+                Button(action: { manager.requestStop() }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("⌘⌥]")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
+                }
+                .buttonStyle(.plain)
+                .disabled(manager.phase != .listening)
             }
-            .buttonStyle(.plain)
-            .disabled(manager.phase != .listening)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
         .frame(width: 420)
         .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(.separator, lineWidth: 0.5))

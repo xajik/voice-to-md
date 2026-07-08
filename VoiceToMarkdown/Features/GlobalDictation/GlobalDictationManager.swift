@@ -57,6 +57,7 @@ final class GlobalDictationManager: ObservableObject {
 
     private func startRecording() {
         audioBuffers = []
+        lastError = nil
         Task { @MainActor in
             guard await AudioCaptureService.requestPermission() else {
                 vtmdLog("DICTATION", "Microphone permission denied")
@@ -85,6 +86,9 @@ final class GlobalDictationManager: ObservableObject {
         audioBuffers = []
         Task {
             await transcribeAndInject(buffers: captured)
+            if await MainActor.run(body: { lastError != nil }) {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+            }
             await MainActor.run { phase = .idle }
         }
     }
