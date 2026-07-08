@@ -103,10 +103,22 @@ final class GlobalDictationManager: ObservableObject {
 
             if let text = try await whisper.transcribe(wavFile: wavURL) {
                 vtmdLog("DICTATION", "Transcribed: \(text)")
+
+                let textToInject: String
+                if BackendSettings.shared.fixTranscriptionWithLLM {
+                    if let fixed = await fixWithLLM(text) {
+                        textToInject = fixed
+                        vtmdLog("DICTATION", "LLM-fixed: \(fixed)")
+                    } else {
+                        textToInject = text
+                    }
+                } else {
+                    textToInject = text
+                }
+
                 if KeystrokeInjector.hasAccessibilityPermission {
-                    // Off-main: waits for hotkey modifiers to be released, then types
-                    KeystrokeInjector.typeText(text + " ")
-                    vtmdLog("DICTATION", "Injected \(text.count) chars")
+                    KeystrokeInjector.typeText(textToInject + " ")
+                    vtmdLog("DICTATION", "Injected \(textToInject.count) chars")
                 } else {
                     vtmdLog("DICTATION", "Accessibility permission missing — text not injected")
                     await MainActor.run {
@@ -118,6 +130,30 @@ final class GlobalDictationManager: ObservableObject {
         } catch {
             vtmdLog("DICTATION", "Transcription error: \(error.localizedDescription)")
             await MainActor.run { lastError = error.localizedDescription }
+        }
+    }
+
+    private func fixWithLLM(_ text: String) async -> String? {
+        guard let baseURL = BackendSettings.shared.baseURL else {
+            vtmdLog("DICTATION", "LLM fix skipped: invalid base URL")
+            return nil
+        }
+        let service = LocalLLMService(baseURL: baseURL)
+        let model: String
+        if !BackendSettings.shared.localModel.isEmpty {
+            model = BackendSettings.shared.localModel
+        } else {
+            guard let models = try? await service.listModels(), !models.isEmpty else {
+                vtmdLog("DICTATION", "LLM fix skipped: no models available")
+                return nil
+            }
+            model = models[0]
+        }
+        do {
+            return try await service.fixTranscription(transcript: text, model: model)
+        } catch {
+            vtmdLog("DICTATION", "LLM fix failed: \(error.localizedDescription)")
+            return nil
         }
     }
 }

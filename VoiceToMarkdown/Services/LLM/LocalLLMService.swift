@@ -52,6 +52,47 @@ final class LocalLLMService {
         ))
     }
 
+    /// Static helper to build a non-streaming chat completion request for fixing raw dictation text.
+    /// Returns the cleaned text directly rather than streaming it.
+    static let fixTranscriptionSystemPrompt = """
+    You are a dictation transcription cleaner. Clean the raw speech-to-text output: \
+    remove filler words (um, uh, like, you know, etc.), fix grammar and typos, \
+    remove STT noise annotations like (wind blowing) or [silence], \
+    preserve the core content and meaning exactly. Maintain the original language. \
+    Respond with ONLY the cleaned text — no explanations, no code fences, no thinking out loud. /no_think
+    """
+
+    func fixTranscription(transcript: String, model: String) async throws -> String {
+        var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": model,
+            "stream": false,
+            "temperature": 0.2,
+            "messages": [
+                ["role": "system", "content": Self.fixTranscriptionSystemPrompt],
+                ["role": "user", "content": transcript]
+            ]
+        ] as [String: Any])
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw LocalLLMError.badStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let first = choices.first,
+              let message = first["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            return transcript
+        }
+        let cleaned = Self.cleanOutput(content)
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Streams only the newly formatted content to append after `recentContext`.
     func appendTranscript(
         recentContext: String, newTranscript: String, model: String

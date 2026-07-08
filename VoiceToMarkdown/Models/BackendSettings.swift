@@ -20,6 +20,11 @@ final class BackendSettings: ObservableObject {
     @Published var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: Keys.launchAtLogin) }
     }
+    /// When enabled, dictation transcription is sent through the local LLM
+    /// for cleanup before being injected at the cursor.
+    @Published var fixTranscriptionWithLLM: Bool {
+        didSet { defaults.set(fixTranscriptionWithLLM, forKey: Keys.fixTranscriptionWithLLM) }
+    }
 
     private let defaults: UserDefaults
 
@@ -29,6 +34,7 @@ final class BackendSettings: ObservableObject {
         localModel = defaults.string(forKey: Keys.localModel) ?? ""
         whisperModel = defaults.string(forKey: Keys.whisperModel) ?? ""
         launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? true
+        fixTranscriptionWithLLM = defaults.object(forKey: Keys.fixTranscriptionWithLLM) as? Bool ?? false
     }
 
     /// Explicit selection if downloaded, otherwise the first downloaded model by preference.
@@ -50,5 +56,6 @@ final class BackendSettings: ObservableObject {
         static let localModel = "vtmd.localModel"
         static let whisperModel = "vtmd.whisperModel"
         static let launchAtLogin = "vtmd.launchAtLogin"
+        static let fixTranscriptionWithLLM = "vtmd.fixTranscriptionWithLLM"
     }
 }

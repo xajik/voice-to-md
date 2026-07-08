@@ -17,6 +17,10 @@ struct ModelSelectorView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
 
+            Toggle("Fix dictation transcription with LLM", isOn: $backend.fixTranscriptionWithLLM)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
             Divider()
 
             Text("Local LLM")
