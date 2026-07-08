@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice-to-Markdown — Talk. Get clean markdown. 100% local.</title>
+<meta name="description" content="A free macOS menu-bar app that turns your voice into structured markdown using whisper.cpp and any local LLM. Global dictation anywhere with ⌘⌥], live markdown editor. No cloud, no API keys — nothing leaves your Mac.">
+<link rel="canonical" href="https://voice-to-md.xajik.workers.dev/">
+<link rel="icon" type="image/png" href="/assets/icon.png">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Voice-to-Markdown — Talk. Get clean markdown. 100% local.">
+<meta property="og:description" content="macOS menu-bar app: voice → whisper.cpp → your local LLM → clean markdown. Global dictation anywhere, live markdown editor. Nothing leaves your Mac.">
+<meta property="og:url" content="https://voice-to-md.xajik.workers.dev/">
+<meta property="og:image" content="https://voice-to-md.xajik.workers.dev/assets/agent-mode.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Voice-to-Markdown — Talk. Get clean markdown. 100% local.">
+<meta name="twitter:description" content="macOS menu-bar app: voice → whisper.cpp → your local LLM → clean markdown. Nothing leaves your Mac.">
+<meta name="twitter:image" content="https://voice-to-md.xajik.workers.dev/assets/agent-mode.jpg">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Voice-to-Markdown",
+  "operatingSystem": "macOS",
+  "applicationCategory": "UtilitiesApplication",
+  "description": "A macOS menu-bar app that turns your voice into structured markdown using whisper.cpp for speech-to-text and any local LLM for formatting. Fully local: no cloud, no API keys.",
+  "url": "https://voice-to-md.xajik.workers.dev/",
+  "image": "https://voice-to-md.xajik.workers.dev/assets/icon.png",
+  "screenshot": "https://voice-to-md.xajik.workers.dev/assets/agent-mode.jpg",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "downloadUrl": "https://github.com/xajik/voice-to-md"
+}
+</script>
+
+<style>
+:root {
+  --grad-a: rgb(77, 115, 250);
+  --grad-b: rgb(140, 64, 230);
+  --ink: #1d1d1f;
+  --ink-2: #6e6e73;
+  --ink-3: #aeaeb2;
+  --bg: #fbfbfd;
+  --card: #ffffff;
+  --hairline: rgba(0, 0, 0, 0.12);
+  --red: #ff3b30;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+a { color: var(--grad-a); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h2 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 8px; }
+.kicker { color: var(--ink-2); font-size: 17px; max-width: 640px; }
+section { padding: 72px 0; }
+code { font-family: var(--mono); font-size: 0.92em; background: rgba(0,0,0,0.05); padding: 1px 6px; border-radius: 5px; }
+pre code { background: none; padding: 0; }
+
+/* ---------- hero ---------- */
+.hero {
+  padding: 96px 0 64px;
+  text-align: center;
+  background:
+    radial-gradient(560px 300px at 22% -10%, rgba(77,115,250,0.16), transparent 70%),
+    radial-gradient(560px 300px at 78% -10%, rgba(140,64,230,0.15), transparent 70%);
+}
+.hero img.app-icon {
+  width: 112px; height: 112px;
+  border-radius: 25px;
+  box-shadow: 0 12px 32px rgba(89, 90, 240, 0.35);
+}
+.hero h1 {
+  font-size: clamp(40px, 7vw, 60px);
+  letter-spacing: -0.03em;
+  margin-top: 24px;
+  background: linear-gradient(120deg, var(--grad-a), var(--grad-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.hero .tagline { font-size: clamp(19px, 3vw, 24px); font-weight: 600; margin-top: 10px; }
+.hero .sub { color: var(--ink-2); font-size: 17px; margin: 10px auto 0; max-width: 560px; }
+.cta-row { display: flex; gap: 12px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; border-radius: 12px;
+  font-size: 16px; font-weight: 600; text-decoration: none;
+}
+.btn:hover { text-decoration: none; filter: brightness(1.06); }
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(120deg, var(--grad-a), var(--grad-b));
+  box-shadow: 0 6px 18px rgba(89, 90, 240, 0.35);
+}
+.btn-ghost { color: var(--ink); background: var(--card); border: 1px solid var(--hairline); }
+.badges { margin-top: 22px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.badge {
+  font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+  background: var(--card); border: 1px solid var(--hairline);
+  padding: 4px 12px; border-radius: 999px;
+}
+
+/* ---------- demo window ---------- */
+.demo-stage { padding: 24px 0 84px; }
+.mac-window {
+  max-width: 760px; margin: 0 auto; position: relative;
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+.titlebar {
+  display: flex; align-items: center;
+  padding: 10px 12px;
+  background: linear-gradient(#fafafa, #f1f1f3);
+  border-bottom: 1px solid var(--hairline);
+}
+.lights { display: flex; gap: 8px; }
+.light { width: 12px; height: 12px; border-radius: 50%; }
+.light.r { background: #ff5f57; } .light.y { background: #febc2e; } .light.g { background: #28c840; }
+.titlebar .title {
+  flex: 1; text-align: center; font-size: 13px; font-weight: 500; color: var(--ink-2);
+  margin-right: 44px; /* balance the traffic lights */
+}
+.editor {
+  min-height: 300px;
+  padding: 16px;
+  font-family: var(--mono); font-size: 13px; line-height: 1.65;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--ink);
+}
+.editor .md-h { font-weight: 700; color: var(--grad-b); }
+.editor .md-bullet { color: var(--grad-a); font-weight: 700; }
+.caret {
+  display: inline-block; width: 7px; height: 15px; vertical-align: -2px;
+  background: var(--grad-a); border-radius: 1px;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.raw-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  font-size: 11.5px; font-weight: 500; color: var(--ink-2);
+  background: #f7f7f9;
+  border-top: 1px solid var(--hairline);
+}
+.raw-bar .count { margin-left: auto; font-family: var(--mono); color: var(--ink-3); }
+.raw-pane {
+  height: 74px; overflow: hidden;
+  padding: 10px 14px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.6;
+  color: var(--ink-2);
+  background: #fcfcfd;
+  border-top: 1px solid var(--hairline);
+}
+.raw-pane .filler { color: var(--ink-3); font-style: italic; }
+/* HUD bubble replica, bottom-right of the window — like the real app */
+.hud-bubble {
+  position: absolute; right: 22px; bottom: 108px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px;
+  background: rgba(250, 250, 252, 0.86);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 0.5px solid var(--hairline); border-radius: 12px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  font-size: 11.5px; font-weight: 600;
+}
+.hud-bubble .state { min-width: 74px; }
+.demo-caption { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: 18px; }
+
+/* mic icon + pulse */
+.mic-wrap { position: relative; width: 26px; height: 26px; display: grid; place-items: center; flex: none; }
+.mic-pulse {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(255, 59, 48, 0.18);
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(0.7); opacity: 1; }
+  70% { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.mic-svg { position: relative; width: 13px; height: 13px; fill: var(--red); }
+
+/* ---------- floating dictation pill ---------- */
+.dictation-pill {
+  position: fixed; left: 50%; bottom: 26px; z-index: 50;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 13px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 12px 16px;
+  background: rgba(246, 246, 248, 0.85);
+  backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 0.5px solid var(--hairline); border-radius: 14px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
+  color: var(--ink); text-decoration: none;
+  animation: bob 3.4s ease-in-out infinite;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.dictation-pill:hover {
+  text-decoration: none;
+  animation-play-state: paused;
+  transform: translateX(-50%) translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+}
+@keyframes bob { 50% { transform: translateX(-50%) translateY(-5px); } }
+.dictation-pill .mic-wrap { width: 34px; height: 34px; }
+.dictation-pill .mic-svg { width: 16px; height: 16px; }
+.dictation-pill .lines { flex: 1; min-width: 0; }
+.dictation-pill .l1 { font-size: 15px; font-weight: 500; }
+.dictation-pill .l2 { font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dictation-pill .chip {
+  flex: none;
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 8px; border-radius: 5px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 12px; font-weight: 500; color: var(--ink-2);
+  font-family: -apple-system, "SF Pro Rounded", var(--mono);
+}
+.dictation-pill .chip svg { width: 9px; height: 9px; fill: var(--ink-2); }
+
+/* ---------- install ---------- */
+.terminal {
+  background: #17171c; color: #e8e8ed;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  margin-top: 26px;
+}
+.terminal .titlebar { background: #24242b; border-bottom-color: rgba(255,255,255,0.08); }
+.terminal .titlebar .title { color: #98989f; }
+.terminal .body {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 16px;
+  font-family: var(--mono); font-size: 14px;
+  overflow-x: auto;
+}
+.terminal .prompt { color: #28c840; flex: none; }
+.terminal .cmd { white-space: nowrap; }
+.copy-btn {
+  margin-left: auto; flex: none;
+  padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08); color: #e8e8ed;
+  font: 600 12.5px/-, -apple-system, sans-serif; font-size: 12.5px;
+  cursor: pointer;
+}
+.copy-btn:hover { background: rgba(255,255,255,0.16); }
+.install-notes { margin-top: 22px; display: grid; gap: 8px; color: var(--ink-2); font-size: 15px; padding-left: 2px; list-style: none; }
+.install-notes li::before { content: "→"; color: var(--grad-b); font-weight: 700; margin-right: 10px; }
+
+/* ---------- cards / modes ---------- */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 30px; }
+.card {
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 16px;
+  padding: 22px; overflow: hidden;
+}
+.card h3 { font-size: 19px; margin-bottom: 6px; letter-spacing: -0.01em; }
+.card p { color: var(--ink-2); font-size: 15px; }
+.card img { width: 100%; height: auto; border-radius: 10px; margin-top: 16px; border: 1px solid var(--hairline); }
+.kbd {
+  font-family: var(--mono); font-size: 0.85em; font-weight: 600;
+  background: #fff; border: 1px solid var(--hairline); border-bottom-width: 2px;
+  border-radius: 6px; padding: 1px 7px;
+}
+
+/* ---------- dependencies ---------- */
+.dep-block { margin-top: 26px; }
+.dep-block pre {
+  background: #17171c; color: #e8e8ed;
+  font-family: var(--mono); font-size: 13.5px;
+  padding: 14px 18px; border-radius: 10px; overflow-x: auto;
+}
+.servers { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 22px; }
+.server {
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px;
+}
+.server h4 { font-size: 15px; margin-bottom: 4px; }
+.server .url { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); word-break: break-all; }
+.server .note { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+table.models { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 15px; }
+table.models th, table.models td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--hairline); }
+table.models th { font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.settings-shot { margin-top: 30px; text-align: center; }
+.settings-shot img { max-width: 549px; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--hairline); box-shadow: 0 10px 30px rgba(0,0,0,0.10); }
+
+/* ---------- footer ---------- */
+footer {
+  padding: 48px 0 130px; /* leave room for the floating pill */
+  text-align: center; color: var(--ink-2); font-size: 14px;
+  border-top: 1px solid var(--hairline);
+}
+footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+
+@media (max-width: 720px) {
+  section { padding: 52px 0; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .hud-bubble { display: none; }
+  .dictation-pill .chip { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dictation-pill, .mic-pulse, .caret { animation: none; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <img class="app-icon" src="/assets/icon.png" alt="Voice-to-Markdown app icon" width="112" height="112">
+    <h1>Voice-to-Markdown</h1>
+    <p class="tagline">Talk. Get clean markdown. 100% local.</p>
+    <p class="sub">A macOS menu-bar app that turns your voice into structured markdown with whisper.cpp and any local LLM. No cloud. No API keys. Nothing leaves your Mac.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#install">Install in one line</a>
+      <a class="btn btn-ghost" href="https://github.com/xajik/voice-to-md">★ View on GitHub</a>
+    </div>
+    <div class="badges">
+      <span class="badge">🍎 macOS 13+</span>
+      <span class="badge">🔒 Fully local</span>
+      <span class="badge">🆓 Free &amp; open source</span>
+      <span class="badge">⚡️ Streams in real time</span>
+    </div>
+  </div>
+</header>
+
+<div class="demo-stage" aria-label="Animated demo of Agent Mode">
+  <div class="wrap">
+    <div class="mac-window" id="demo-window">
+      <div class="titlebar">
+        <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
+        <span class="title">Voice to Markdown</span>
+      </div>
+      <div class="editor" id="md-out" aria-live="off"></div>
+      <div class="hud-bubble" aria-hidden="true">
+        <span class="mic-wrap"><span class="mic-pulse"></span><svg class="mic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
+        <span class="state" id="hud-state">Recording</span>
+      </div>
+      <div class="raw-bar"><span aria-hidden="true">⌃</span> Raw input <span class="count" id="raw-count"></span></div>
+      <div class="raw-pane" id="raw-out"></div>
+    </div>
+    <p class="demo-caption">↑ You ramble, whisper.cpp transcribes, your local LLM structures it — live, on your Mac.</p>
+  </div>
+</div>
+
+<main>
+<section id="install">
+  <div class="wrap">
+    <h2>🚀 Install</h2>
+    <p class="kicker">One line. The script installs the build dependencies with Homebrew, builds the app from source, and drops it in /Applications.</p>
+    <div class="terminal">
+      <div class="titlebar">
+        <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
+        <span class="title">Terminal</span>
+      </div>
+      <div class="body">
+        <span class="prompt" aria-hidden="true">$</span>
+        <span class="cmd" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/xajik/voice-to-md/main/install.sh | bash</span>
+        <button class="copy-btn" id="copy-btn" aria-label="Copy install command">Copy</button>
+      </div>
+    </div>
+    <ul class="install-notes">
+      <li>Installs <code>xcodegen</code>, <code>whisper-cpp</code> and <code>ffmpeg</code> via Homebrew, then builds the app.</li>
+      <li>On first launch, grant <strong>Microphone</strong> and <strong>Accessibility</strong> access when macOS asks.</li>
+      <li>Download a Whisper model from <strong>Settings…</strong> in the menu bar — <em>Base</em> (~150 MB) is a great start.</li>
+      <li>Prefer to do it by hand? <a href="https://github.com/xajik/voice-to-md#-quick-start">Follow the Quick Start on GitHub</a>.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="modes">
+  <div class="wrap">
+    <h2>✨ Two modes</h2>
+    <p class="kicker">One hotkey for everywhere, one window for deep work.</p>
+    <div class="grid-2">
+      <article class="card">
+        <h3>⌨️ Global Dictation</h3>
+        <p>Press <span class="kbd">⌘⌥]</span> in any app, speak, and the transcript is typed straight at your cursor. Terminal, browser, Slack — anything. A Spotlight-style pill shows what's happening.</p>
+        <img src="/assets/input-into-focus-view.jpg" alt="Global dictation pill typing spoken text into a focused editor" width="618" height="290" loading="lazy">
+      </article>
+      <article class="card">
+        <h3>📝 Agent Mode</h3>
+        <p>Speak freely; a local LLM streams your words into a clean, structured markdown document in real time. The raw transcript stays one click away. Start it from the menu bar.</p>
+        <img src="/assets/status-bar.jpg" alt="Voice-to-Markdown menu bar menu with Start Agent Mode" width="666" height="346" loading="lazy">
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="dependencies">
+  <div class="wrap">
+    <h2>🧠 Dependencies &amp; local LLM</h2>
+    <p class="kicker">Global Dictation only needs whisper.cpp — installed for you. Agent Mode talks to any <strong>OpenAI-compatible</strong> server running on your Mac (default <code>http://127.0.0.1:8000/v1</code>). Pick one:</p>
+
+    <div class="dep-block">
+      <pre><code>brew install xcodegen whisper-cpp ffmpeg   # build dependencies (install.sh does this)</code></pre>
+    </div>
+
+    <div class="servers">
+      <article class="server">
+        <h4>omlx <small>· Apple Silicon, fastest</small></h4>
+        <p class="url">http://127.0.0.1:8000/v1</p>
+        <p class="note"><code>brew install omlx</code> then <code>omlx serve &lt;model&gt;</code> — VTMD's default port, zero config.</p>
+      </article>
+      <article class="server">
+        <h4>Ollama</h4>
+        <p class="url">http://127.0.0.1:11434/v1</p>
+        <p class="note"><code>ollama pull qwen3.5</code> (or <code>gemma3</code>), then <code>ollama serve</code>.</p>
+      </article>
+      <article class="server">
+        <h4>LM Studio</h4>
+        <p class="url">http://127.0.0.1:1234/v1</p>
+        <p class="note">Grab a model in the app, start the local server.</p>
+      </article>
+      <article class="server">
+        <h4>llama.cpp</h4>
+        <p class="url">http://127.0.0.1:8080/v1</p>
+        <p class="note"><code>llama-server -m model.gguf --port 8080</code>.</p>
+      </article>
+    </div>
+
+    <table class="models">
+      <thead><tr><th>Recommended model</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Qwen3.5 27B</strong> (4-bit)</td><td>Best formatting quality; the default pick</td></tr>
+        <tr><td><strong>Gemma 26B</strong> (8-bit)</td><td>Fast, great instruction following</td></tr>
+      </tbody>
+    </table>
+
+    <div class="settings-shot">
+      <img src="/assets/settings.jpg" alt="Settings window: local LLM endpoint and model picker plus Whisper model dropdown" width="549" height="364" loading="lazy">
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="lock">🔒 AVAudioEngine → whisper.cpp → local LLM → your screen.</p>
+    <p>That's the whole pipeline. Nothing leaves your Mac.</p>
+    <p style="margin-top:14px"><a href="https://github.com/xajik/voice-to-md">Source on GitHub</a> · MIT-spirited, built for humans who think out loud.</p>
+  </div>
+</footer>
+
+<a class="dictation-pill" href="https://github.com/xajik/voice-to-md" aria-label="Listening… — view the Voice-to-Markdown source on GitHub">
+  <span class="mic-wrap"><span class="mic-pulse"></span><svg class="mic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
+  <span class="lines">
+    <span class="l1">Listening…</span><br>
+    <span class="l2">Click to grab the source on GitHub</span>
+  </span>
+  <span class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>⌘⌥]</span>
+</a>
+
+<script>
+(function () {
+  "use strict";
+  var rawOut = document.getElementById("raw-out");
+  var mdOut = document.getElementById("md-out");
+  var rawCount = document.getElementById("raw-count");
+  var hudState = document.getElementById("hud-state");
+
+  // spoken words; fillers get faded in the raw pane and vanish from the markdown
+  var spoken = ("okay so um the plan for tomorrow first finish the landing page " +
+    "then uh review the pull request and um maybe ship version one point two").split(" ");
+  var fillers = { um: 1, uh: 1, okay: 1, so: 1 };
+  var markdown = "# Plan for Tomorrow\n\n- Finish the landing page\n- Review the pull request\n- Ship v1.2 🚀\n";
+
+  function highlight(text) {
+    return text.split("\n").map(function (line) {
+      var esc = line.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+      if (/^#/.test(esc)) return '<span class="md-h">' + esc + "</span>";
+      if (/^- /.test(esc)) return '<span class="md-bullet">-</span> ' + esc.slice(2);
+      return esc;
+    }).join("\n");
+  }
+
+  function renderMd(upTo) {
+    mdOut.innerHTML = highlight(markdown.slice(0, upTo)) + '<span class="caret"></span>';
+  }
+
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) {
+    // no animation: show the finished state
+    mdOut.innerHTML = highlight(markdown);
+    rawOut.innerHTML = spoken.map(function (w) {
+      return fillers[w] ? '<span class="filler">' + w + "</span>" : w;
+    }).join(" ");
+    rawCount.textContent = spoken.length + " words";
+    hudState.textContent = "Paused";
+    return;
+  }
+
+  var timer = null;
+  function schedule(fn, ms) { timer = setTimeout(fn, ms); }
+
+  function loop() {
+    var wi = 0, ci = 0;
+    rawOut.innerHTML = "";
+    rawCount.textContent = "";
+    hudState.textContent = "Recording";
+    renderMd(0);
+
+    function speakWord() {
+      if (wi < spoken.length) {
+        var w = spoken[wi++];
+        rawOut.innerHTML += (fillers[w] ? '<span class="filler">' + w + "</span>" : w) + " ";
+        rawCount.textContent = wi + " words";
+        schedule(speakWord, 90 + Math.random() * 130);
+      } else {
+        hudState.textContent = "Processing";
+        schedule(typeMd, 500);
+      }
+    }
+
+    function typeMd() {
+      if (ci < markdown.length) {
+        ci += 1;
+        renderMd(ci);
+        schedule(typeMd, markdown[ci - 1] === "\n" ? 130 : 16);
+      } else {
+        hudState.textContent = "Paused";
+        schedule(loop, 4200); // hold the result, then run again
+      }
+    }
+    speakWord();
+  }
+
+  // start when the demo scrolls into view; pause the loop when it leaves
+  var started = false;
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting && !started) { started = true; loop(); }
+      else if (!e.isIntersecting && started) { started = false; clearTimeout(timer); }
+    });
+  }, { threshold: 0.25 });
+  observer.observe(document.getElementById("demo-window"));
+
+  // copy button
+  var btn = document.getElementById("copy-btn");
+  btn.addEventListener("click", function () {
+    navigator.clipboard.writeText(document.getElementById("install-cmd").textContent).then(function () {
+      btn.textContent = "Copied ✓";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    });
+  });
+})();
+</script>
+</body>
+</html>
