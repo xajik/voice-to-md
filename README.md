@@ -8,7 +8,7 @@
 
 A macOS menu-bar app that turns your voice into structured markdown using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text and any local LLM for formatting. No cloud. No API keys. Nothing leaves your Mac.
 
-<img src="demo/agent-mode.png" alt="Agent Mode: spoken words become a structured spec, live" width="100%"/>
+<img src="demo/agent-mode.jpg" alt="Agent Mode: spoken words become a structured spec, live" width="100%"/>
 
 *↑ This entire product spec was dictated by voice — a local LLM structured it in real time.*
 
@@ -16,11 +16,11 @@ A macOS menu-bar app that turns your voice into structured markdown using [whisp
 
 - **⌨️ Global Dictation — `⌘⌥]` anywhere.** Speak, and the transcript is typed straight into whatever field has focus. Terminal, browser, Slack — anything. A Spotlight-style pill shows what's happening:
 
-  <img src="demo/input-into-focus-view.png" alt="Global dictation typing into a focused editor" width="520"/>
+  <img src="demo/input-into-focus-view.jpg" alt="Global dictation typing into a focused editor" width="520"/>
 
 - **📝 Agent Mode — live markdown editor.** Speak freely; a local LLM streams your words into a clean, structured markdown document in real time. Raw transcript stays one click away. Start it from the menu bar:
 
-  <img src="demo/status-bar.png" alt="Menu bar" width="420"/>
+  <img src="demo/status-bar.jpg" alt="Menu bar" width="420"/>
 
 ## 🚀 Quick Start
 
@@ -36,7 +36,7 @@ First launch: grant **Microphone** + **Accessibility** access, then download a W
 
 Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
 
-<img src="demo/settings.png" alt="Settings: local LLM endpoint, model picker, Whisper model" width="520"/>
+<img src="demo/settings.jpg" alt="Settings: local LLM endpoint, model picker, Whisper model" width="520"/>
 
 Pick your server:
 
