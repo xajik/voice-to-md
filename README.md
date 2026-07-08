@@ -1,17 +1,26 @@
-# 🎙️ Voice-to-Markdown
+<p align="center">
+  <img src="demo/icon.png" alt="Voice-to-Markdown icon" width="128"/>
+</p>
 
-**Talk. Get clean markdown. 100% local.**
+<h1 align="center">🎙️ Voice-to-Markdown</h1>
+
+<p align="center"><b>Talk. Get clean markdown. 100% local.</b></p>
 
 A macOS menu-bar app that turns your voice into structured markdown using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text and any local LLM for formatting. No cloud. No API keys. Nothing leaves your Mac.
 
-| Model Selection | Live Markdown Agent |
-|---|---|
-| <img src="demo/model-selection.png" alt="Model selection UI" width="250"/> | <img src="demo/vtmd-chat.png" alt="VTMD agent UI" width="250"/> |
+<img src="demo/agent-mode.png" alt="Agent Mode: spoken words become a structured spec, live" width="100%"/>
+
+*↑ This entire product spec was dictated by voice — a local LLM structured it in real time.*
 
 ## ✨ Two modes
 
-- **⌨️ Global Dictation — `⌘⌥]` anywhere.** Speak, and the transcript is typed straight into whatever field has focus. Terminal, browser, Slack — anything.
-- **📝 Agent Mode — live markdown editor.** Speak freely; a local LLM streams your words into a clean, structured markdown document in real time. Raw transcript stays one click away.
+- **⌨️ Global Dictation — `⌘⌥]` anywhere.** Speak, and the transcript is typed straight into whatever field has focus. Terminal, browser, Slack — anything. A Spotlight-style pill shows what's happening:
+
+  <img src="demo/input-into-focus-view.png" alt="Global dictation typing into a focused editor" width="520"/>
+
+- **📝 Agent Mode — live markdown editor.** Speak freely; a local LLM streams your words into a clean, structured markdown document in real time. Raw transcript stays one click away. Start it from the menu bar:
+
+  <img src="demo/status-bar.png" alt="Menu bar" width="420"/>
 
 ## 🚀 Quick Start
 
@@ -25,7 +34,9 @@ First launch: grant **Microphone** + **Accessibility** access, then download a W
 
 ## 🧠 Local LLM Setup (Agent Mode)
 
-Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Settings… → Backend** (default: `http://127.0.0.1:8000/v1`, model auto-picked).
+Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
+
+<img src="demo/settings.png" alt="Settings: local LLM endpoint, model picker, Whisper model" width="520"/>
 
 Pick your server:
 
