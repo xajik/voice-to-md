@@ -5,6 +5,7 @@ struct HUDBubbleView: View {
     @ObservedObject var viewModel: HUDViewModel
     @State private var offset: CGSize = .zero
     @State private var dragStart: CGSize = .zero
+    @State private var showResetConfirmation = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -14,6 +15,10 @@ struct HUDBubbleView: View {
             Divider()
                 .frame(height: 20)
             modeSwitcher
+            Divider()
+                .frame(height: 20)
+                .padding(.horizontal, 4)
+            trashButton
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -31,6 +36,17 @@ struct HUDBubbleView: View {
                 }
                 .onEnded { _ in dragStart = offset }
         )
+        .confirmationDialog(
+            "Clear Session",
+            isPresented: $showResetConfirmation
+        ) {
+            Button("Clear All", role: .destructive) {
+                viewModel.resetSession()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will clear all recorded audio, transcript, and markdown content.")
+        }
     }
 
     private var sendButton: some View {
@@ -55,6 +71,17 @@ struct HUDBubbleView: View {
         }
         .buttonStyle(.plain)
         .help(micHelp)
+    }
+
+    private var trashButton: some View {
+        Button(action: { showResetConfirmation = true }) {
+            Image(systemName: "trash")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.secondary)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .help("Clear session")
     }
 
     private var micHelp: String {

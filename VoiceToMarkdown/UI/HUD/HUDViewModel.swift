@@ -56,4 +56,8 @@ final class HUDViewModel: ObservableObject {
     func stopSession() {
         Task { await coordinator.stopSession() }
     }
+
+    func resetSession() {
+        Task { await coordinator.resetSession() }
+    }
 }

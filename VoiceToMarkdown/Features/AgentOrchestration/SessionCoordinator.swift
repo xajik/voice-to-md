@@ -143,6 +143,34 @@ final class SessionCoordinator: ObservableObject {
         vtmdLog("SESSION", "Session stopped")
     }
 
+    func resetSession() async {
+        vtmdLog("SESSION", "Resetting session")
+        audioService?.stop()
+
+        transcriptionTask?.cancel()
+        transcriptionTask = nil
+        flushTask?.cancel()
+        flushTask = nil
+
+        pcmChunks = []
+        pcmFrames = 0
+        transcript = ""
+        markdown = ""
+        error = nil
+        editorSelection = nil
+        isProcessing = false
+
+        await buffer.clear()
+
+        if let session {
+            try? fileManager.writeMarkdown("", to: session.txtPath)
+            try? fileManager.writeMarkdown("", to: session.mdPath)
+        }
+
+        session?.state = .paused
+        vtmdLog("SESSION", "Session reset complete")
+    }
+
     private func startFileWatcher(mdPath: URL) {
         fileWatcher = FileWatcher(url: mdPath) { [weak self] in
             Task { @MainActor in
