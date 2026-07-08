@@ -4,7 +4,7 @@
 
 <h1 align="center">🎙️ Voice-to-Markdown</h1>
 
-<p align="center"><b>Talk. Get clean markdown. 100% local.</b></p>
+<p align="center"><b>Talk. Get clean markdown. 100% local. 🔗 <a href="https://voice-to-md.xajik0.workers.dev/">voice-to-md.dev</a></b></p>
 
 A macOS menu-bar app that turns your voice into structured markdown using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text and any local LLM for formatting. No cloud. No API keys. Nothing leaves your Mac.
 
