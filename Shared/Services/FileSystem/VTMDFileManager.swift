@@ -9,8 +9,15 @@ final class VTMDFileManager {
     let logsDir: URL
 
     private init() {
+        #if os(iOS)
+        // Documents + UIFileSharingEnabled keeps sessions user-visible in the
+        // Files app — the sandbox substitute for ~/.vtmd discoverability.
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        vtmdRoot = documents.appendingPathComponent("vtmd")
+        #else
         let home = FileManager.default.homeDirectoryForCurrentUser
         vtmdRoot = home.appendingPathComponent(".vtmd")
+        #endif
         modelsDir = vtmdRoot.appendingPathComponent("models/tts")
         voiceToMarkdownDir = vtmdRoot.appendingPathComponent("voice-to-markdown")
         logsDir = vtmdRoot.appendingPathComponent("logs")

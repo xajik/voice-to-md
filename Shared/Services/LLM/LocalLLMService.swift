@@ -143,7 +143,9 @@ final class LocalLLMService {
 
     // MARK: - Pure helpers (unit-tested)
 
-    static func systemPrompt(for format: OutputFormat) -> String {
+    /// `noThink` appends the Qwen-family `/no_think` control token; backends
+    /// whose models don't understand it (e.g. Apple Foundation Models) pass false.
+    static func systemPrompt(for format: OutputFormat, noThink: Bool = true) -> String {
         """
         You are a voice-to-\(format.languageName) formatting assistant. \
         Each user message is a JSON object with "current_document" and "new_transcript" (raw speech-to-text). \
@@ -151,11 +153,11 @@ final class LocalLLMService {
         fix grammar and typos while preserving the core content and ideas. \
         Integrate the cleaned content into current_document, inferring the document's purpose and structuring it accordingly. \
         \(format.promptExpectations)
-        Respond with ONLY the complete updated document — no explanations, no code fences, no thinking out loud. /no_think
+        Respond with ONLY the complete updated document — no explanations, no code fences, no thinking out loud.\(noThink ? " /no_think" : "")
         """
     }
 
-    static func editSystemPrompt(for format: OutputFormat) -> String {
+    static func editSystemPrompt(for format: OutputFormat, noThink: Bool = true) -> String {
         """
         You are a voice-driven \(format.languageName) editing assistant. \
         Each user message is a JSON object with "current_document", "new_transcript" \
@@ -168,11 +170,11 @@ final class LocalLLMService {
         Make only the requested change; leave the rest of the document untouched. \
         \(format.promptExpectations)
         Respond with ONLY the complete updated document — no explanations, \
-        no code fences, no thinking out loud. /no_think
+        no code fences, no thinking out loud.\(noThink ? " /no_think" : "")
         """
     }
 
-    static func appendSystemPrompt(for format: OutputFormat) -> String {
+    static func appendSystemPrompt(for format: OutputFormat, noThink: Bool = true) -> String {
         """
         You are a voice-to-\(format.languageName) formatting assistant. \
         Each user message is a JSON object with "recent_context" (the last few sentences \
@@ -182,22 +184,22 @@ final class LocalLLMService {
         Format it as \(format.languageName) that flows naturally after recent_context. \
         \(format.promptExpectations)
         Respond with ONLY the new content to append — do NOT repeat recent_context, \
-        no explanations, no code fences, no thinking out loud. /no_think
+        no explanations, no code fences, no thinking out loud.\(noThink ? " /no_think" : "")
         """
     }
 
-    static func buildRequestBody(
-        model: String, currentDocument: String, newTranscript: String, format: OutputFormat
-    ) -> [String: Any] {
-        chatBody(model: model, systemPrompt: systemPrompt(for: format), payload: [
+    // The user message is the JSON payload the system prompts describe.
+    // These builders are the single source of that JSON for every backend
+    // (OpenAI-compatible HTTP here, Foundation Models on iOS).
+
+    static func formatUserPayload(currentDocument: String, newTranscript: String) -> String {
+        encodePayload([
             "current_document": currentDocument,
             "new_transcript": newTranscript
         ], fallback: newTranscript)
     }
 
-    static func buildEditRequestBody(
-        model: String, currentDocument: String, instruction: String, userFocus: String?, format: OutputFormat
-    ) -> [String: Any] {
+    static func editUserPayload(currentDocument: String, instruction: String, userFocus: String?) -> String {
         var payload = [
             "current_document": currentDocument,
             "new_transcript": instruction
@@ -205,29 +207,58 @@ final class LocalLLMService {
         if let focus = userFocus, !focus.isEmpty {
             payload["user_focus"] = focus
         }
-        return chatBody(model: model, systemPrompt: editSystemPrompt(for: format), payload: payload, fallback: instruction)
+        return encodePayload(payload, fallback: instruction)
     }
 
-    static func buildAppendRequestBody(
-        model: String, recentContext: String, newTranscript: String, format: OutputFormat
-    ) -> [String: Any] {
-        chatBody(model: model, systemPrompt: appendSystemPrompt(for: format), payload: [
+    static func appendUserPayload(recentContext: String, newTranscript: String) -> String {
+        encodePayload([
             "recent_context": recentContext,
             "new_transcript": newTranscript
         ], fallback: newTranscript)
     }
 
-    private static func chatBody(
-        model: String, systemPrompt: String, payload: [String: String], fallback: String
+    static func buildRequestBody(
+        model: String, currentDocument: String, newTranscript: String, format: OutputFormat
     ) -> [String: Any] {
-        let userContent: String
+        chatBody(
+            model: model,
+            systemPrompt: systemPrompt(for: format),
+            userContent: formatUserPayload(currentDocument: currentDocument, newTranscript: newTranscript)
+        )
+    }
+
+    static func buildEditRequestBody(
+        model: String, currentDocument: String, instruction: String, userFocus: String?, format: OutputFormat
+    ) -> [String: Any] {
+        chatBody(
+            model: model,
+            systemPrompt: editSystemPrompt(for: format),
+            userContent: editUserPayload(currentDocument: currentDocument, instruction: instruction, userFocus: userFocus)
+        )
+    }
+
+    static func buildAppendRequestBody(
+        model: String, recentContext: String, newTranscript: String, format: OutputFormat
+    ) -> [String: Any] {
+        chatBody(
+            model: model,
+            systemPrompt: appendSystemPrompt(for: format),
+            userContent: appendUserPayload(recentContext: recentContext, newTranscript: newTranscript)
+        )
+    }
+
+    private static func encodePayload(_ payload: [String: String], fallback: String) -> String {
         if let data = try? JSONSerialization.data(withJSONObject: payload),
            let str = String(data: data, encoding: .utf8) {
-            userContent = str
-        } else {
-            userContent = fallback
+            return str
         }
-        return [
+        return fallback
+    }
+
+    private static func chatBody(
+        model: String, systemPrompt: String, userContent: String
+    ) -> [String: Any] {
+        [
             "model": model,
             "stream": true,
             "temperature": 0.2,

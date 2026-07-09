@@ -1,4 +1,4 @@
-.PHONY: setup generate open build build-debug test test-verbose lint lint-fix clean clean-all run deps deps-install check install uninstall dmg _sign
+.PHONY: setup generate open build build-debug build-ios test test-verbose test-ios lint lint-fix clean clean-all run deps deps-install check install uninstall dmg _sign
 
 SCHEME        = VoiceToMarkdown
 CONFIGURATION = Release
@@ -85,6 +85,21 @@ _sign:
 run: build
 	@echo "Launching $(APP_PATH)..."
 	open "$(APP_PATH)"
+
+# ── iOS ───────────────────────────────────────────────────────────────────────
+# Simulator builds are unsigned; device builds need a real team:
+#   make generate DEVELOPMENT_TEAM=XXXXXXXXXX && xcodebuild -scheme $(IOS_SCHEME) ...
+
+IOS_SCHEME = VoiceToMarkdownIOS
+IOS_XCB_FLAGS = -scheme $(IOS_SCHEME) -derivedDataPath $(BUILD_DIR) \
+	CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+IOS_DEST ?= platform=iOS Simulator,name=iPhone 17 Pro
+
+build-ios:
+	@$(call xcb,$(IOS_XCB_FLAGS) -destination 'generic/platform=iOS Simulator' -configuration Debug build)
+
+test-ios:
+	@$(call xcb,$(IOS_XCB_FLAGS) -configuration Debug -destination '$(IOS_DEST)' test)
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 

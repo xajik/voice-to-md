@@ -116,6 +116,47 @@ final class LocalLLMServiceTests: XCTestCase {
         }
     }
 
+    func testNoThinkFalseDropsControlToken() {
+        for format in OutputFormat.allCases {
+            let prompts = [
+                LocalLLMService.systemPrompt(for: format, noThink: false),
+                LocalLLMService.editSystemPrompt(for: format, noThink: false),
+                LocalLLMService.appendSystemPrompt(for: format, noThink: false)
+            ]
+            for prompt in prompts {
+                XCTAssertFalse(prompt.contains("/no_think"),
+                               "\(format.rawValue) noThink:false prompt must not contain /no_think")
+                XCTAssertTrue(prompt.hasSuffix("no thinking out loud."),
+                              "\(format.rawValue) prompt should still end with the cleaned instruction")
+            }
+        }
+    }
+
+    // MARK: - User payload builders (shared with the iOS Foundation Models backend)
+
+    func testFormatUserPayloadKeys() throws {
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(LocalLLMService.formatUserPayload(currentDocument: "# Doc", newTranscript: "hi").utf8)
+        ) as? [String: String])
+        XCTAssertEqual(payload, ["current_document": "# Doc", "new_transcript": "hi"])
+    }
+
+    func testEditUserPayloadKeys() throws {
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(LocalLLMService.editUserPayload(
+                currentDocument: "# Doc", instruction: "fix", userFocus: "Doc"
+            ).utf8)
+        ) as? [String: String])
+        XCTAssertEqual(payload, ["current_document": "# Doc", "new_transcript": "fix", "user_focus": "Doc"])
+    }
+
+    func testAppendUserPayloadKeys() throws {
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(LocalLLMService.appendUserPayload(recentContext: "Last.", newTranscript: "more").utf8)
+        ) as? [String: String])
+        XCTAssertEqual(payload, ["recent_context": "Last.", "new_transcript": "more"])
+    }
+
     func testBuildersUseSelectedFormatPrompt() throws {
         for format in OutputFormat.allCases {
             let body = LocalLLMService.buildRequestBody(

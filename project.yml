@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.vtmd
   deploymentTarget:
     macOS: "13.0"
+    iOS: "26.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -24,6 +25,9 @@ targets:
       - path: VoiceToMarkdown
         excludes:
           - "**/*.md"
+      - path: Shared
+        excludes:
+          - "**/*.md"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.vtmd.voicetomarkdown
@@ -41,6 +45,32 @@ targets:
             swiftlint
           fi
 
+  VoiceToMarkdownIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+        excludes:
+          - "**/*.md"
+      - path: VoiceToMarkdownIOS
+        excludes:
+          - "**/*.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vtmd.voicetomarkdown.ios
+        PRODUCT_NAME: VoiceToMarkdown
+        # Same module name as the macOS app so shared test files can
+        # `@testable import VoiceToMarkdown` unchanged on both platforms.
+        PRODUCT_MODULE_NAME: VoiceToMarkdown
+        INFOPLIST_FILE: VoiceToMarkdownIOS/Resources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_HARDENED_RUNTIME: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies: []
+    scheme:
+      testTargets:
+        - VoiceToMarkdownIOSTests
+
   VoiceToMarkdownTests:
     type: bundle.unit-test
     platform: macOS
@@ -52,3 +82,27 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/VoiceToMarkdown.app/Contents/MacOS/VoiceToMarkdown"
     dependencies:
       - target: VoiceToMarkdown
+
+  VoiceToMarkdownIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/VoiceToMarkdownIOSTests
+      # Portable pure-logic tests reused from the macOS bundle; excluded files
+      # exercise macOS-only types (whisper subprocess, downloads).
+      - path: Tests/VoiceToMarkdownTests
+        includes:
+          - TranscriptBufferTests.swift
+          - OutputFormatTests.swift
+          - LocalLLMServiceTests.swift
+          - VTMDFileManagerTests.swift
+          - VTMDSessionTests.swift
+          - SessionStateTests.swift
+          - AgentModeTests.swift
+          - ModelSizeTests.swift
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/VoiceToMarkdown.app/VoiceToMarkdown"
+    dependencies:
+      - target: VoiceToMarkdownIOS
