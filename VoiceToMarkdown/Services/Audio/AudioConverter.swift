@@ -40,17 +40,10 @@ final class AudioConverter {
     }
 
     private static func resolveExecutable(_ name: String) throws -> URL {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = [name]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        try process.run()
-        process.waitUntilExit()
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !output.isEmpty else { throw AudioConverterError.dependencyMissing(name) }
-        return URL(fileURLWithPath: output)
+        guard let url = ExecutableResolver.resolve(name) else {
+            throw AudioConverterError.dependencyMissing(name)
+        }
+        return url
     }
 }
 

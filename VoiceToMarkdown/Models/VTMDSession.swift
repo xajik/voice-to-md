@@ -19,4 +19,16 @@ struct VTMDSession {
         self.format = format
         self.dirPath = baseDir.appendingPathComponent("voice-to-markdown/\(id)")
     }
+
+    /// Reconstructs a session from an existing on-disk directory (see
+    /// `VTMDFileManager.listSessions()`) so a prior recording can be resumed.
+    /// `modelSize` isn't persisted per session, so the caller passes the
+    /// currently resolved whisper model.
+    init(restoring listing: SessionListing, modelSize: ModelSize) {
+        self.id = listing.id
+        self.dirPath = listing.dirPath
+        self.modelSize = modelSize
+        self.state = .idle
+        self.format = listing.format
+    }
 }

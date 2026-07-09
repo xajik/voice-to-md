@@ -86,4 +86,78 @@ final class VTMDFileManagerTests: XCTestCase {
     func testIsModelDownloadedReturnsFalseForMissing() {
         XCTAssertFalse(fm.isModelDownloaded(.large))
     }
+
+    // MARK: - listSessions
+
+    private func makeSessionDir(id: String, txt: String? = "raw transcript", doc: (ext: String, content: String)? = nil) {
+        let dir = tmpDir.appendingPathComponent(id)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let txt {
+            try? txt.write(to: dir.appendingPathComponent("\(id).txt"), atomically: true, encoding: .utf8)
+        }
+        if let doc {
+            try? doc.content.write(to: dir.appendingPathComponent("\(id).\(doc.ext)"), atomically: true, encoding: .utf8)
+        }
+    }
+
+    func testListSessionsEmptyForEmptyDirectory() {
+        XCTAssertTrue(VTMDFileManager.listSessions(in: tmpDir).isEmpty)
+    }
+
+    func testListSessionsDetectsTxtFormatWhenOnlyTxtFilePresent() {
+        makeSessionDir(id: "1000")
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.first?.format, .txt)
+    }
+
+    func testListSessionsDetectsMdFormat() {
+        makeSessionDir(id: "2000", doc: (ext: "md", content: "# Notes"))
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.first?.format, .md)
+    }
+
+    func testListSessionsDetectsHtmlFormat() {
+        makeSessionDir(id: "3000", doc: (ext: "html", content: "<h2>Notes</h2>"))
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.first?.format, .html)
+    }
+
+    func testListSessionsSortedNewestFirst() {
+        makeSessionDir(id: "1000")
+        makeSessionDir(id: "3000")
+        makeSessionDir(id: "2000")
+        let ids = VTMDFileManager.listSessions(in: tmpDir).map(\.id)
+        XCTAssertEqual(ids, ["3000", "2000", "1000"])
+    }
+
+    func testListSessionsSkipsNonNumericDirectoryNames() {
+        makeSessionDir(id: "1000")
+        try? FileManager.default.createDirectory(
+            at: tmpDir.appendingPathComponent("not-a-session"), withIntermediateDirectories: true
+        )
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.id, "1000")
+    }
+
+    func testListSessionsPreviewStripsMarkdownHeadingMarker() {
+        makeSessionDir(id: "1000", doc: (ext: "md", content: "# Hello World\n\nBody text"))
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.first?.preview, "Hello World")
+    }
+
+    func testListSessionsPreviewEmptyForEmptyDocument() {
+        makeSessionDir(id: "1000", txt: "")
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        XCTAssertEqual(sessions.first?.preview, "")
+    }
+
+    func testListSessionsDirPathMatchesSessionDirectory() {
+        makeSessionDir(id: "1000")
+        let sessions = VTMDFileManager.listSessions(in: tmpDir)
+        // /tmp resolves through a /private symlink on macOS, so compare the
+        // path tail rather than requiring byte-for-byte URL equality.
+        XCTAssertEqual(sessions.first?.dirPath.lastPathComponent, "1000")
+        XCTAssertTrue(sessions.first?.dirPath.path.hasSuffix("/1000") ?? false)
+    }
 }

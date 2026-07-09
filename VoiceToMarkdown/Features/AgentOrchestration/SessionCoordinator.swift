@@ -63,20 +63,10 @@ final class SessionCoordinator: ObservableObject {
 
         do {
             _ = try fileManager.createSessionDirectory(id: newSession.id)
-
-            guard let baseURL = backendSettings.baseURL else { throw SessionError.invalidBaseURL }
-            let service = LocalLLMService(baseURL: baseURL)
-            let models = try await service.listModels()
-            guard !models.isEmpty else { throw LocalLLMError.noModels }
-            llmModel = backendSettings.localModel.isEmpty ? models[0] : backendSettings.localModel
-            llmService = service
-
-            whisper = WhisperService(modelPath: modelSize.localPath(in: fileManager.modelsDir))
-            audioService = AudioCaptureService()
-            audioService?.delegate = self
+            try await connectServices(modelSize: modelSize)
 
             startFileWatcher(docPath: newSession.docPath)
-            vtmdLog("SESSION", "Ready: \(baseURL.absoluteString) model=\(llmModel) doc=\(newSession.docPath.path)")
+            vtmdLog("SESSION", "Ready: model=\(llmModel) doc=\(newSession.docPath.path)")
             // No separate ready state — go straight into recording
             await beginRecording()
         } catch {
@@ -90,6 +80,59 @@ final class SessionCoordinator: ObservableObject {
     func startRecording() {
         guard session?.state == .paused else { return }
         Task { await beginRecording() }
+    }
+
+    /// Loads a prior session from disk (see `VTMDFileManager.listSessions()`)
+    /// so recording/editing can continue where it left off. Its files are
+    /// already persisted, so replacing an active session here is non-destructive.
+    func restoreSession(_ listing: SessionListing) async {
+        if session != nil {
+            await stopSession()
+        }
+        vtmdLog("SESSION", "Restoring session: \(listing.id)")
+        guard let modelSize = BackendSettings.shared.resolvedWhisperModel() else {
+            error = "No Whisper model downloaded. Pick one in Settings."
+            return
+        }
+
+        transcript = fileManager.readMarkdown(from: listing.txtPath)
+        error = nil
+        mode = .format
+        editorSelection = nil
+        outputFormat = listing.format
+        markdown = fileManager.readMarkdown(from: listing.docPath)
+
+        var restored = VTMDSession(restoring: listing, modelSize: modelSize)
+
+        do {
+            try await connectServices(modelSize: modelSize)
+
+            restored.state = .paused
+            session = restored
+            startFileWatcher(docPath: restored.docPath)
+            vtmdLog("SESSION", "Restored: doc=\(restored.docPath.path)")
+        } catch {
+            vtmdLog("SESSION", "Error restoring session: \(error.localizedDescription)")
+            self.error = error.localizedDescription
+            llmService = nil
+            session = nil
+        }
+    }
+
+    /// Shared by `startSession`/`restoreSession`: resolves the LLM + wires
+    /// whisper and audio capture. Assigns `llmService`/`llmModel`/`whisper`/
+    /// `audioService`; throws before any assignment happens on failure.
+    private func connectServices(modelSize: ModelSize) async throws {
+        guard let baseURL = backendSettings.baseURL else { throw SessionError.invalidBaseURL }
+        let service = LocalLLMService(baseURL: baseURL)
+        let models = try await service.listModels()
+        guard !models.isEmpty else { throw LocalLLMError.noModels }
+        llmModel = backendSettings.localModel.isEmpty ? models[0] : backendSettings.localModel
+        llmService = service
+
+        whisper = WhisperService(modelPath: modelSize.localPath(in: fileManager.modelsDir))
+        audioService = AudioCaptureService()
+        audioService?.delegate = self
     }
 
     private func beginRecording() async {

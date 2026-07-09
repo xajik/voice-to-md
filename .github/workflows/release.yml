@@ -1,5 +1,17 @@
 name: Release
 
+# Signs with a Developer ID certificate and notarizes when the secrets below
+# are configured; otherwise falls back to an ad-hoc signature (users must
+# right-click → Open once to bypass Gatekeeper).
+#
+# Optional secrets for Developer ID signing + notarization:
+#   DEVELOPER_ID_CERT_BASE64   — exported .p12 cert (base64)
+#   DEVELOPER_ID_CERT_PASSWORD — .p12 password
+#   KEYCHAIN_PASSWORD          — ephemeral keychain password
+#   APPLE_ID                   — notarization Apple ID
+#   APPLE_APP_PASSWORD         — app-specific password
+#   APPLE_TEAM_ID              — 10-char team ID
+
 on:
   push:
     tags:
@@ -11,7 +23,7 @@ permissions:
 
 jobs:
   release:
-    name: Build, Ad-Hoc Sign & Release
+    name: Build, Sign & Release
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -19,6 +31,7 @@ jobs:
       SCHEME: VoiceToMarkdown
       APP_NAME: VoiceToMarkdown
       BUNDLE_ID: com.vtmd.voicetomarkdown
+      ENTITLEMENTS: VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements
 
     steps:
       - name: Checkout Repository
@@ -34,28 +47,101 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Archive (Ad-Hoc Signed)
+      - name: Detect Signing Configuration
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.DEVELOPER_ID_CERT_BASE64 }}" ]; then
+            echo "HAS_CERT=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_CERT=false" >> "$GITHUB_ENV"
+            echo "::notice::DEVELOPER_ID_CERT_BASE64 not set — falling back to ad-hoc signing."
+          fi
+          if [ -n "${{ secrets.APPLE_ID }}" ] && [ -n "${{ secrets.APPLE_APP_PASSWORD }}" ] && [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+            echo "CAN_NOTARIZE=true" >> "$GITHUB_ENV"
+          else
+            echo "CAN_NOTARIZE=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Import Developer ID Certificate
+        if: env.HAS_CERT == 'true'
+        shell: bash
+        env:
+          CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+
+          echo -n "$CERT_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+          [ -n "$IDENTITY" ] || { echo "No Developer ID Application identity in the imported certificate."; exit 1; }
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+          rm "$CERT_PATH"
+
+      - name: Build Release
+        shell: bash
         run: |
           xcodebuild \
             -scheme "$SCHEME" \
             -configuration Release \
             -derivedDataPath .build \
-            CODE_SIGNING_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=YES \
-            archive \
-            -archivePath .build/VoiceToMarkdown.xcarchive | xcpretty
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build | xcpretty
 
-      - name: Extract App Binary
+      - name: Sign App
+        shell: bash
         run: |
-          mkdir -p .build/export
-          cp -R .build/VoiceToMarkdown.xcarchive/Products/Applications/$APP_NAME.app .build/export/$APP_NAME.app
+          APP_PATH=".build/Build/Products/Release/$APP_NAME.app"
+          # --timestamp requires a real certificate; ad-hoc signing has none.
+          TIMESTAMP_FLAG=""
+          [ -n "${SIGN_IDENTITY:-}" ] && TIMESTAMP_FLAG="--timestamp"
+          codesign --force --deep --options runtime $TIMESTAMP_FLAG \
+            --entitlements "$ENTITLEMENTS" \
+            -s "${SIGN_IDENTITY:--}" "$APP_PATH"
+          codesign --verify --strict --verbose=2 "$APP_PATH"
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
 
-      - name: Create DMG Packaging
+      - name: Notarize App
+        if: env.HAS_CERT == 'true' && env.CAN_NOTARIZE == 'true'
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent "$APP_PATH" "$RUNNER_TEMP/$APP_NAME.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/$APP_NAME.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$APP_PATH"
+
+      - name: Create DMG
+        shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           # Fallback version if triggered manually via workflow_dispatch
           if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then VERSION="1.0.0"; fi
-          
+
+          mkdir -p .build/export
+          cp -R "$APP_PATH" ".build/export/$APP_NAME.app"
+
           create-dmg \
             --volname "$APP_NAME $VERSION" \
             --window-pos 200 120 \
@@ -70,7 +156,26 @@ jobs:
           echo "DMG_PATH=.build/$APP_NAME-$VERSION.dmg" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Sign & Notarize DMG
+        if: env.HAS_CERT == 'true'
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          codesign --force --timestamp -s "$SIGN_IDENTITY" "$DMG_PATH"
+          if [ "$CAN_NOTARIZE" = "true" ]; then
+            xcrun notarytool submit "$DMG_PATH" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple "$DMG_PATH"
+          fi
+
       - name: Generate Sparkle Appcast
+        shell: bash
         run: |
           cat > appcast.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
@@ -90,24 +195,42 @@ jobs:
           </rss>
           EOF
 
+      - name: Compose Release Notes
+        shell: bash
+        run: |
+          {
+            echo "NOTES<<VTMD_EOF"
+            echo "## VoiceToMarkdown $VERSION"
+            echo ""
+            if [ "$HAS_CERT" = "true" ] && [ "$CAN_NOTARIZE" = "true" ]; then
+              echo "Signed with a Developer ID certificate and notarized by Apple — open it like any other app."
+            else
+              echo "### ⚠️ Bypass Gatekeeper (Required)"
+              echo "This build is not signed with an Apple Developer ID certificate, so macOS will prevent it from launching normally at first."
+              echo ""
+              echo "1. Download and open \`VoiceToMarkdown-$VERSION.dmg\`."
+              echo "2. Drag the app to your **Applications** folder."
+              echo "3. **Do not double-click the app to open it.** Instead, **Right-click (or Control-click)** the app icon and select **Open**."
+              echo "4. Click **Open** on the confirmation prompt. You only need to do this once!"
+            fi
+            echo ""
+            echo "### Requirements"
+            echo "- macOS 13.0+"
+            echo "- Dependencies: \`brew install whisper-cpp ffmpeg\`"
+            echo "VTMD_EOF"
+          } >> "$GITHUB_ENV"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "VoiceToMarkdown ${{ env.VERSION }}"
-          body: |
-            ## VoiceToMarkdown ${{ env.VERSION }}
-
-            ### ⚠️ Bypass Gatekeeper (Required)
-            Because this is an open-source build without an Apple Developer signature, macOS will prevent it from launching normally at first.
-            
-            1. Download and open `VoiceToMarkdown-${{ env.VERSION }}.dmg`.
-            2. Drag the app to your **Applications** folder.
-            3. **Do not double-click the app to open it.** Instead, **Right-click (or Control-click)** the app icon and select **Open**.
-            4. Click **Open** on the confirmation prompt. You only need to do this once!
-
-            ### Requirements
-            - macOS 13.0+
-            - Dependencies: `brew install whisper-cpp ffmpeg tmux`
+          body: ${{ env.NOTES }}
           files: |
             ${{ env.DMG_PATH }}
             appcast.xml
+
+      - name: Clean Up Keychain
+        if: always() && env.HAS_CERT == 'true'
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true

@@ -9,7 +9,9 @@
 # Signing: `make install` auto-detects an "Apple Development" identity so
 # repeat installs keep their Microphone / Accessibility grants. Without one,
 # the build is ad-hoc signed and macOS will re-ask for permissions after an
-# update.
+# update. To pin a specific identity (or force ad-hoc with "-"), export it:
+#   SIGN_IDENTITY="Apple Development: Name (TEAMID)" ./install.sh
+# The variable flows through the environment into make's identity detection.
 
 set -euo pipefail
 

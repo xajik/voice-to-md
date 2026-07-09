@@ -108,4 +108,40 @@ final class VTMDSessionTests: XCTestCase {
         session.state = .recording
         XCTAssertEqual(session.state, .recording)
     }
+
+    // MARK: - restoring
+
+    private func makeListing(id: String = "1000", format: OutputFormat = .md) -> SessionListing {
+        SessionListing(
+            id: id,
+            dirPath: baseDir.appendingPathComponent("voice-to-markdown/\(id)"),
+            format: format,
+            createdAt: Date(timeIntervalSince1970: Double(id)! / 1000),
+            preview: "preview"
+        )
+    }
+
+    func testRestoringPreservesIdDirPathAndFormat() {
+        let listing = makeListing()
+        let session = VTMDSession(restoring: listing, modelSize: .small)
+        XCTAssertEqual(session.id, listing.id)
+        XCTAssertEqual(session.dirPath, listing.dirPath)
+        XCTAssertEqual(session.format, listing.format)
+    }
+
+    func testRestoringUsesProvidedModelSize() {
+        let session = VTMDSession(restoring: makeListing(), modelSize: .large)
+        XCTAssertEqual(session.modelSize, .large)
+    }
+
+    func testRestoringStateIsIdle() {
+        let session = VTMDSession(restoring: makeListing(), modelSize: .base)
+        XCTAssertEqual(session.state, .idle)
+    }
+
+    func testRestoringDocPathMatchesListingFormat() {
+        let listing = makeListing(format: .html)
+        let session = VTMDSession(restoring: listing, modelSize: .base)
+        XCTAssertEqual(session.docPath, listing.docPath)
+    }
 }

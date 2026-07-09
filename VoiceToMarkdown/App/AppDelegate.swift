@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var dictationMenuItem: NSMenuItem?
     private var dictationActive = false
+    private var hudVM: HUDViewModel?
+    private var historyPopover: NSPopover?
 
     private let coordinator = SessionCoordinator()
     private let dictationManager = GlobalDictationManager()
@@ -178,6 +180,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hudVM = HUDViewModel(coordinator: coordinator)
             let editorVM = MarkdownEditorViewModel(coordinator: coordinator)
             let contentView = AgentOrchestratorView(hudVM: hudVM, editorVM: editorVM)
+            self.hudVM = hudVM
 
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 900, height: 700),
@@ -189,6 +192,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.center()
             window.contentView = NSHostingView(rootView: contentView)
             window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.toolbar = makeAgentToolbar()
             window.isReleasedWhenClosed = false
             // No stop button in the HUD — closing the window ends the session
             window.delegate = self
@@ -196,6 +201,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         agentWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func makeAgentToolbar() -> NSToolbar {
+        let toolbar = NSToolbar(identifier: "AgentToolbar")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        return toolbar
+    }
+
+    @objc private func toggleHistoryPopover(_ sender: NSButton) {
+        if let popover = historyPopover, popover.isShown {
+            popover.performClose(sender)
+            return
+        }
+        guard let hudVM else { return }
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 320, height: 400)
+        popover.contentViewController = NSHostingController(
+            rootView: SessionHistoryView(viewModel: hudVM) { [weak popover] in
+                popover?.performClose(nil)
+            }
+        )
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+        historyPopover = popover
     }
 
     @objc private func openModelSelector() {
@@ -255,6 +285,38 @@ extension AppDelegate: NSWindowDelegate {
         guard (notification.object as? NSWindow) === agentWindow else { return }
         Task { await coordinator.stopSession() }
     }
+}
+
+extension AppDelegate: NSToolbarDelegate {
+    func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        guard itemIdentifier == .sessionHistory else { return nil }
+        let icon = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Recent Sessions")
+        let button = NSButton(image: icon ?? NSImage(), target: self, action: #selector(toggleHistoryPopover(_:)))
+        button.bezelStyle = .texturedRounded
+        button.isBordered = false
+        button.toolTip = "Recent sessions"
+
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.view = button
+        item.label = "History"
+        return item
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace, .sessionHistory]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.sessionHistory, .flexibleSpace]
+    }
+}
+
+private extension NSToolbarItem.Identifier {
+    static let sessionHistory = NSToolbarItem.Identifier("sessionHistory")
 }
 
 struct AgentOrchestratorView: View {

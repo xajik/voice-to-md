@@ -10,7 +10,7 @@ final class WhisperService {
     }
 
     func transcribe(wavFile: URL) async throws -> String? {
-        let binary = try await resolveWhisperBinary()
+        let binary = try Self.resolveWhisperBinary()
         let process = Process()
         process.executableURL = binary
         process.arguments = [
@@ -66,35 +66,14 @@ final class WhisperService {
 
     /// Absolute path of the whisper binary the app would run, nil when missing.
     static func resolvedBinaryPath() async -> String? {
-        (try? await resolveWhisperBinary())?.path
+        (try? resolveWhisperBinary())?.path
     }
 
-    private func resolveWhisperBinary() async throws -> URL {
-        try await Self.resolveWhisperBinary()
-    }
-
-    private static func resolveWhisperBinary() async throws -> URL {
-        for name in ["whisper-cli", "whisper-cpp"] {
-            if let url = try? await which(name) {
-                return url
-            }
+    private static func resolveWhisperBinary() throws -> URL {
+        guard let url = ExecutableResolver.resolve("whisper-cli", "whisper-cpp") else {
+            throw WhisperError.binaryNotFound
         }
-        throw WhisperError.binaryNotFound
-    }
-
-    private static func which(_ name: String) async throws -> URL {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = [name]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw WhisperError.binaryNotFound }
-        let path = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !path.isEmpty else { throw WhisperError.binaryNotFound }
-        return URL(fileURLWithPath: path)
+        return url
     }
 }
 

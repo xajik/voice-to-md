@@ -6,6 +6,7 @@ import SwiftUI
 final class HUDViewModel: ObservableObject {
     private let coordinator: SessionCoordinator
     private var cancellables = Set<AnyCancellable>()
+    @Published var sessions: [SessionListing] = []
 
     var sessionState: SessionState {
         if coordinator.isProcessing { return .processing }
@@ -70,5 +71,13 @@ final class HUDViewModel: ObservableObject {
 
     func openPreview() {
         coordinator.openPreview()
+    }
+
+    func refreshSessions() {
+        sessions = VTMDFileManager.shared.listSessions()
+    }
+
+    func restoreSession(_ listing: SessionListing) {
+        Task { await coordinator.restoreSession(listing) }
     }
 }
