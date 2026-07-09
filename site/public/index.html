@@ -185,7 +185,7 @@ pre code { background: none; padding: 0; }
 }
 .raw-pane .filler { color: var(--ink-3); font-style: italic; }
 /* HUD control-panel replica, bottom-right of the window — like the real app:
-   send · mic · status · | · Format / Edit / Append */
+   send · mic · status · | · Format / Edit / Append · MD · | · preview */
 .hud-bubble {
   position: absolute; right: 22px; bottom: 108px;
   display: flex; align-items: center; gap: 8px;
@@ -206,6 +206,11 @@ pre code { background: none; padding: 0; }
 .hud-mode svg { width: 12px; height: 12px; fill: var(--ink-2); }
 .hud-mode.active { background: rgba(77, 115, 250, 0.28); }
 .hud-mode.active svg { fill: var(--grad-a-lite); }
+.hud-format {
+  flex: none;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  color: var(--ink-2);
+}
 .demo-caption { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: 18px; }
 
 /* mic icon + pulse */
@@ -518,6 +523,9 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
         <span class="hud-mode active" title="Format"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
         <span class="hud-mode" title="Edit"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
         <span class="hud-mode" title="Append"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg></span>
+        <span class="hud-format" title="Output format">MD</span>
+        <span class="hud-sep"></span>
+        <span class="hud-mode" title="Preview"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
       </div>
       <div class="raw-bar"><span aria-hidden="true">⌃</span> Raw input <span class="count" id="raw-count"></span></div>
       <div class="raw-pane" id="raw-out"></div>
@@ -545,6 +553,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <ul class="install-notes">
       <li>Installs <code>xcodegen</code>, <code>whisper-cpp</code> and <code>ffmpeg</code> via Homebrew, then builds the app.</li>
       <li>On first launch, grant <strong>Microphone</strong> and <strong>Accessibility</strong> access when macOS asks.</li>
+      <li>Re-running the installer <strong>keeps those grants</strong> — builds are signed with your Apple Development identity when one exists.</li>
       <li>Download a Whisper model from <strong>Settings…</strong> in the menu bar — <em>Base</em> (~150 MB) is a great start.</li>
       <li>Prefer to do it by hand? <a href="https://github.com/xajik/voice-to-md#-quick-start">Follow the Quick Start on GitHub</a>.</li>
     </ul>
@@ -579,7 +588,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
 
       <article class="card">
         <h3>📝 Agent Mode</h3>
-        <p>Speak freely; a local LLM streams your words into a clean, structured markdown document in real time. The raw transcript stays one click away. Start it from the menu bar.</p>
+        <p>Speak freely; a local LLM streams your words into a clean, structured document in real time — Markdown, plain text, or HTML. The raw transcript stays one click away. Start it from the menu bar.</p>
         <div class="mock menubar-mock" role="img" aria-label="macOS menu bar with the Voice-to-Markdown menu open: Start Agent Mode, Global Dictation, Settings, Quit">
           <div class="strip" aria-hidden="true">
             <span class="sicon active"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
@@ -607,7 +616,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <p class="kicker">One floating, draggable capsule drives the whole session — and decides <em>how</em> your voice lands in the document.</p>
 
     <img class="panel-shot" src="/assets/agent-mode-control-panel.jpg" alt="Agent Mode control panel: send button, mic, Recording status, and the Format / Edit / Append mode switcher" width="510" height="152" loading="lazy">
-    <p class="panel-caption">The real thing — send · mic · status · Format / Edit / Append.</p>
+    <p class="panel-caption">Send · mic · status · Format / Edit / Append · output format · preview · clear.</p>
 
     <div class="servers">
       <article class="server">
@@ -630,13 +639,21 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
         <h4>➕ Append</h4>
         <p class="note">Speed mode for long documents: only the <strong>last 3 sentences</strong> + your new words are sent; the model returns just the new content, appended. Latency stays flat as the file grows.</p>
       </article>
+      <article class="server">
+        <h4>🗂 Output format <small>· MD / TXT / HTML</small></h4>
+        <p class="note">A dropdown picks what comes out: <strong>Markdown</strong> (default), <strong>plain text</strong>, or <strong>HTML</strong>. Each format ships its own rules + example to the LLM, works in every mode, and the file on disk gets the matching extension. Remembered across launches.</p>
+      </article>
+      <article class="server">
+        <h4>👁️ Preview</h4>
+        <p class="note">Opens the session document in the default app for its type — the browser for HTML, your editor for markdown or plain text.</p>
+      </article>
     </div>
 
     <ol class="flow-steps" aria-label="How a flush works">
       <li><strong>You speak.</strong> Audio is transcribed on-device by whisper.cpp in ~4-second chunks.</li>
       <li><strong>Words buffer up.</strong> At ~30 words, after a 5-second pause, or the moment you hit <strong>Send</strong>, the buffer flushes.</li>
-      <li><strong>The mode picks the prompt.</strong> Format rewrites the whole document, Edit applies your instruction (to the selection, if any), Append formats only what's new.</li>
-      <li><strong>Tokens stream straight into the editor</strong> — and the markdown file on disk is updated after every flush.</li>
+      <li><strong>The mode and output format pick the prompt.</strong> Format rewrites the whole document, Edit applies your instruction (to the selection, if any), Append formats only what's new — in Markdown, plain text, or HTML.</li>
+      <li><strong>Tokens stream straight into the editor</strong> — and the document on disk (<code>.md</code> / <code>.txt</code> / <code>.html</code>) is updated after every flush.</li>
     </ol>
   </div>
 </section>

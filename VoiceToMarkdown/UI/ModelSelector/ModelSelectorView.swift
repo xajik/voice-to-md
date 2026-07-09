@@ -17,7 +17,7 @@ struct ModelSelectorView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
 
-            Toggle("Fix dictation transcription with LLM", isOn: $backend.fixTranscriptionWithLLM)
+            Toggle("Typo correction for Global Dictation transcription with LLM", isOn: $backend.fixTranscriptionWithLLM)
                 .toggleStyle(.switch)
                 .controlSize(.small)
 
@@ -34,6 +34,13 @@ struct ModelSelectorView: View {
                 .font(.title2.weight(.semibold))
 
             whisperSection
+
+            Divider()
+
+            Text("Doctor")
+                .font(.title2.weight(.semibold))
+
+            DoctorView()
         }
         .padding(20)
         .task { await loadModels() }

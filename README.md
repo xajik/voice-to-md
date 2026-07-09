@@ -33,7 +33,11 @@ Left to right:
 - **✈️ Send (`⌘↩`)** — don't wait for the auto-flush: transcribe whatever you just said and send it to the LLM *right now*. Enabled while recording and idle (no LLM call in flight).
 - **🎙️ Mic** — start, pause, and resume the session. Red pulse = listening.
 - **Status** — `Recording` / `Processing` / `Paused` at a glance, with errors surfaced inline.
-- **Mode switcher** — how your voice is applied to the document:
+- **Mode switcher** and **format dropdown** — how your voice is applied (see below) and what comes out: **MD** (default), **TXT**, or **HTML**. Each format ships its own expectations + example to the LLM, works in every mode, and the session file extension follows (`.md` / `.txt` / `.html` — switching mid-session renames the file). Your choice is remembered across launches.
+- **👁️ Preview** — opens the session document in the default app for its type (browser for HTML, your editor for markdown/plain text).
+- **🗑️ Trash** — clears the session (audio, transcript, and document) after a confirmation.
+
+The modes:
 
 | Mode | Icon | What it does |
 |---|---|---|
@@ -41,17 +45,27 @@ Left to right:
 | **Edit** | ✏️ | Your voice is an **instruction**, not content: *"change the subtitle to Weekly Notes"*, *"turn that list into a table"*. Select text in the editor first and the model treats it as the focus of the edit. |
 | **Append** | ➕ | Speed mode for long documents: only the **last 3 sentences** + your new words are sent, and the model returns just the new content, which is appended. The LLM never re-reads the whole file, so latency stays flat as the document grows. |
 
-The flow underneath: audio is transcribed by whisper.cpp in ~4 s chunks and buffered; once ~30 words accumulate (or you pause for 5 s, or hit **Send**), the buffer is flushed to the LLM using the prompt for the current mode — and tokens stream straight into the editor.
+The flow underneath: audio is transcribed by whisper.cpp in ~4 s chunks and buffered; once ~30 words accumulate (or you pause for 5 s, or hit **Send**), the buffer is flushed to the LLM using the prompt for the current mode and output format — and tokens stream straight into the editor.
 
 ## 🚀 Quick Start
 
+One line — installs dependencies, builds from source, and drops the app in /Applications:
+
 ```bash
-brew install xcodegen whisper-cpp ffmpeg   # dependencies
+curl -fsSL https://raw.githubusercontent.com/xajik/voice-to-md/main/install.sh | bash
+```
+
+Or from a checkout:
+
+```bash
 git clone https://github.com/xajik/voice-to-md.git && cd voice-to-md
-make setup && make run
+make install       # deps + build + copy to /Applications
+# …or for development: make setup && make run
 ```
 
 First launch: grant **Microphone** + **Accessibility** access, then download a Whisper model from **Settings…** in the menu bar (Base is a great start).
+
+**Signing:** builds are automatically signed with your "Apple Development" identity when one is in the keychain, so re-installs keep their Microphone/Accessibility grants. No identity → ad-hoc fallback (macOS will re-ask for permissions after updates). Override with `make install SIGN_IDENTITY="…"`.
 
 ## 🧠 Local LLM Setup (Agent Mode)
 
@@ -106,10 +120,12 @@ Anything that follows instructions well works — VTMD streams tokens as they ar
 ## 🛠️ Development
 
 ```bash
-make check     # verify dependencies
-make build     # release build
-make test      # unit tests
-make generate  # regen .xcodeproj after editing project.yml
+make check      # verify dependencies
+make build      # release build + sign
+make test       # unit tests
+make generate   # regen .xcodeproj after editing project.yml
+make install    # build + install to /Applications
+make uninstall  # remove from /Applications
 ```
 
 Everything runs on-device: AVAudioEngine → whisper.cpp → local LLM → your screen. That's the whole pipeline.

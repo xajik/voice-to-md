@@ -61,12 +61,12 @@ final class WhisperService {
     }
 
     static func checkAvailability() async -> Bool {
-        do {
-            _ = try await resolveWhisperBinary()
-            return true
-        } catch {
-            return false
-        }
+        await resolvedBinaryPath() != nil
+    }
+
+    /// Absolute path of the whisper binary the app would run, nil when missing.
+    static func resolvedBinaryPath() async -> String? {
+        (try? await resolveWhisperBinary())?.path
     }
 
     private func resolveWhisperBinary() async throws -> URL {

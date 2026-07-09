@@ -34,6 +34,11 @@ final class AudioConverter {
         }
     }
 
+    /// Absolute path of the ffmpeg binary the app would run, nil when missing.
+    static func resolvedFFmpegPath() -> String? {
+        (try? resolveExecutable("ffmpeg"))?.path
+    }
+
     private static func resolveExecutable(_ name: String) throws -> URL {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")

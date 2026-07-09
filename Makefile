@@ -1,9 +1,37 @@
-.PHONY: setup generate open build test lint clean run deps check install uninstall
+.PHONY: setup generate open build build-debug test test-verbose lint lint-fix clean clean-all run deps deps-install check install uninstall dmg _sign
 
 SCHEME        = VoiceToMarkdown
 CONFIGURATION = Release
 BUILD_DIR     = .build
-APP_PATH      = $(BUILD_DIR)/Build/Products/$(CONFIGURATION)/VoiceToMarkdown.app
+APP_NAME      = VoiceToMarkdown.app
+APP_PATH      = $(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(APP_NAME)
+DEBUG_APP     = $(BUILD_DIR)/Build/Products/Debug/$(APP_NAME)
+APP_DST       = /Applications/$(APP_NAME)
+ENTITLEMENTS  = VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements
+
+# Signing identity. Ad-hoc signatures change on every build, which silently
+# invalidates TCC grants (Microphone, Accessibility) — so auto-detect a stable
+# "Apple Development" identity when one exists. Override with
+#   make build SIGN_IDENTITY="Apple Development: Name (TEAMID)"
+# or force ad-hoc with SIGN_IDENTITY=-
+ifndef SIGN_IDENTITY
+SIGN_IDENTITY := $(shell security find-identity -v -p codesigning 2>/dev/null \
+	| awk -F'"' '/Apple Development/ {print $$2; exit}')
+endif
+
+XCB_FLAGS = -scheme $(SCHEME) -derivedDataPath $(BUILD_DIR) \
+	CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+# Run xcodebuild once, through xcpretty only when it is installed.
+# pipefail keeps xcodebuild's exit status so failures are not masked.
+define xcb
+set -o pipefail 2>/dev/null; \
+if command -v xcpretty >/dev/null 2>&1; then \
+	xcodebuild $(1) 2>&1 | xcpretty; \
+else \
+	xcodebuild $(1); \
+fi
+endef
 
 # ── First-time setup ─────────────────────────────────────────────────────────
 
@@ -14,12 +42,20 @@ setup: deps generate
 
 deps:
 	@echo "Checking system dependencies..."
-	@which xcodegen > /dev/null || brew install xcodegen
-	@which whisper-cli > /dev/null || which whisper-cpp > /dev/null || \
+	@command -v xcodegen > /dev/null || brew install xcodegen
+	@command -v whisper-cli > /dev/null || command -v whisper-cpp > /dev/null || \
 		(echo "  whisper-cli not found — install: brew install whisper-cpp" && exit 1)
-	@which ffmpeg > /dev/null || \
+	@command -v ffmpeg > /dev/null || \
 		(echo "  ffmpeg not found — install: brew install ffmpeg" && exit 1)
 	@echo "  All dependencies present."
+
+# Like deps, but installs whatever is missing instead of failing.
+deps-install:
+	@echo "==> Checking dependencies (xcodegen, whisper-cpp, ffmpeg)…"
+	@command -v xcodegen > /dev/null || brew install xcodegen
+	@command -v whisper-cli > /dev/null || command -v whisper-cpp > /dev/null || brew install whisper-cpp
+	@command -v ffmpeg > /dev/null || brew install ffmpeg
+	@echo "    All dependencies present."
 
 generate:
 	@echo "Generating Xcode project..."
@@ -32,39 +68,19 @@ open: generate
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 build:
-	xcodebuild \
-		-scheme $(SCHEME) \
-		-configuration $(CONFIGURATION) \
-		-derivedDataPath $(BUILD_DIR) \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-		build 2>&1 | xcpretty || xcodebuild \
-		-scheme $(SCHEME) \
-		-configuration $(CONFIGURATION) \
-		-derivedDataPath $(BUILD_DIR) \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-		build
-	@codesign --force --deep \
-		--entitlements VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements \
-		-s - \
-		"$(APP_PATH)" 2>/dev/null; \
-	if [ $$? -eq 0 ]; then \
-		echo "  Signed with entitlements."; \
-	fi
+	@$(call xcb,$(XCB_FLAGS) -configuration $(CONFIGURATION) build)
+	@$(MAKE) --no-print-directory _sign APP=$(APP_PATH)
 
 build-debug:
-	xcodebuild \
-		-scheme $(SCHEME) \
-		-configuration Debug \
-		-derivedDataPath $(BUILD_DIR) \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-		build 2>&1 | xcpretty || true
-	@if [ -d "$(BUILD_DIR)/Build/Products/Debug/VoiceToMarkdown.app" ]; then \
-		echo "  Signing with entitlements..."; \
-		codesign --force --deep \
-			--entitlements VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements \
-			-s - \
-			"$(BUILD_DIR)/Build/Products/Debug/VoiceToMarkdown.app"; \
-	fi
+	@$(call xcb,$(XCB_FLAGS) -configuration Debug build)
+	@$(MAKE) --no-print-directory _sign APP=$(DEBUG_APP)
+
+# Internal: sign $(APP) with the stable identity when available, else ad-hoc.
+_sign:
+	@codesign --force --deep --options runtime \
+		--entitlements $(ENTITLEMENTS) \
+		-s "$(or $(SIGN_IDENTITY),-)" "$(APP)"
+	@echo "  Signed with entitlements ($(or $(SIGN_IDENTITY),ad-hoc))."
 
 run: build
 	@echo "Launching $(APP_PATH)..."
@@ -73,40 +89,26 @@ run: build
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 test:
-	xcodebuild \
-		-scheme $(SCHEME) \
-		-configuration Debug \
-		-derivedDataPath $(BUILD_DIR) \
-		-destination 'platform=macOS' \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-		test 2>&1 | xcpretty || xcodebuild \
-		-scheme $(SCHEME) \
-		-configuration Debug \
-		-derivedDataPath $(BUILD_DIR) \
-		-destination 'platform=macOS' \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-		test
+	@$(call xcb,$(XCB_FLAGS) -configuration Debug -destination 'platform=macOS' test)
 
 test-verbose:
 	xcodebuild \
-		-scheme $(SCHEME) \
+		$(XCB_FLAGS) \
 		-configuration Debug \
-		-derivedDataPath $(BUILD_DIR) \
 		-destination 'platform=macOS' \
-		CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
 		test
 
 # ── Lint ──────────────────────────────────────────────────────────────────────
 
 lint:
-	@if which swiftlint > /dev/null 2>&1; then \
+	@if command -v swiftlint > /dev/null 2>&1; then \
 		swiftlint lint --config .swiftlint.yml 2>/dev/null || swiftlint lint; \
 	else \
 		echo "swiftlint not found — install: brew install swiftlint"; \
 	fi
 
 lint-fix:
-	@if which swiftlint > /dev/null 2>&1; then \
+	@if command -v swiftlint > /dev/null 2>&1; then \
 		swiftlint lint --fix; \
 	else \
 		echo "swiftlint not found — install: brew install swiftlint"; \
@@ -116,12 +118,12 @@ lint-fix:
 
 check:
 	@echo "=== Dependency check ==="
-	@which xcodegen   > /dev/null && echo "  [OK] xcodegen"   || echo "  [MISSING] xcodegen   — brew install xcodegen"
-	@(which whisper-cli > /dev/null || which whisper-cpp > /dev/null) \
+	@command -v xcodegen   > /dev/null && echo "  [OK] xcodegen"   || echo "  [MISSING] xcodegen   — brew install xcodegen"
+	@(command -v whisper-cli > /dev/null || command -v whisper-cpp > /dev/null) \
 		&& echo "  [OK] whisper"     || echo "  [MISSING] whisper    — brew install whisper-cpp"
-	@which ffmpeg     > /dev/null && echo "  [OK] ffmpeg"     || echo "  [MISSING] ffmpeg     — brew install ffmpeg"
-	@which swiftlint  > /dev/null && echo "  [OK] swiftlint"  || echo "  [optional] swiftlint — brew install swiftlint"
-	@which xcpretty   > /dev/null && echo "  [OK] xcpretty"   || echo "  [optional] xcpretty  — gem install xcpretty"
+	@command -v ffmpeg     > /dev/null && echo "  [OK] ffmpeg"     || echo "  [MISSING] ffmpeg     — brew install ffmpeg"
+	@command -v swiftlint  > /dev/null && echo "  [OK] swiftlint"  || echo "  [optional] swiftlint — brew install swiftlint"
+	@command -v xcpretty   > /dev/null && echo "  [OK] xcpretty"   || echo "  [optional] xcpretty  — gem install xcpretty"
 	@echo ""
 	@xcodebuild -version | head -1
 
@@ -134,49 +136,38 @@ clean:
 clean-all: clean
 	rm -rf ~/Library/Developer/Xcode/DerivedData/VoiceToMarkdown-*
 
-# ── Local install (mirrors install.sh for personal use) ──────────────────────
+# ── Local install ─────────────────────────────────────────────────────────────
 #
-#   Replicates the production install.sh flow without cloning the repo.
-#   Installs Homebrew deps, builds a Release .app, and copies it to /Applications.
+#   The single install flow — install.sh bootstraps (clone/update) and then
+#   delegates here. Installs Homebrew deps, builds a Release .app, and copies
+#   it to /Applications.
 #   Usage: make install
-
-APP_NAME      = VoiceToMarkdown.app
-APP_DST       = /Applications/$(APP_NAME)
 
 install:
 	@echo ""
-	@echo "=== Voice-to-Markdown local installer ==="
+	@echo "=== Voice-to-Markdown installer ==="
 	@echo ""
-	@# ── Pre-flight checks ────────────────────────────────────────────────
 	@[ "$$(uname -s)" = "Darwin" ] || (echo "Error: macOS only." && exit 1)
 	@command -v brew > /dev/null 2>&1 \
 		|| (echo "Error: Homebrew required. Install: https://brew.sh" && exit 1)
-	@xcode-select -p > /dev/null 2>&1 \
-		|| (echo "Error: Xcode CLT required. Run: xcode-select --install" && exit 1)
-	@echo "  [OK] macOS, Homebrew, Xcode CLT"
+	@xcodebuild -version > /dev/null 2>&1 \
+		|| (echo "Error: Xcode required (Command Line Tools alone cannot build apps)." && exit 1)
+	@echo "  [OK] macOS, Homebrew, Xcode"
 	@echo ""
-	@# ── Install Homebrew dependencies ────────────────────────────────────
-	@echo "==> Installing dependencies (xcodegen, whisper-cpp, ffmpeg)…"
-	@for pkg in xcodegen whisper-cpp ffmpeg; do \
-		if brew list "$$pkg" > /dev/null 2>&1; then \
-			echo "    $$pkg already installed"; \
-		else \
-			echo "    Installing $$pkg…"; \
-			brew install "$$pkg"; \
-		fi; \
-	done
+	@$(MAKE) --no-print-directory deps-install
 	@echo ""
-	@# ── Generate project & build ──────────────────────────────────────────
 	@echo "==> Generating Xcode project…"
-	@$(MAKE) generate
+	@$(MAKE) --no-print-directory generate
 	@echo ""
 	@echo "==> Building Release (this may take a few minutes)…"
-	@$(MAKE) build
+	@$(MAKE) --no-print-directory build
 	@echo ""
-	@# ── Copy .app to /Applications ───────────────────────────────────────
 	@[ -d "$(APP_PATH)" ] \
 		|| (echo "Error: Build finished but $(APP_PATH) was not produced." && exit 1)
 	@echo "==> Installing to /Applications…"
+	@if pkill -x VoiceToMarkdown 2>/dev/null; then \
+		echo "    Quit running VoiceToMarkdown"; sleep 1; \
+	fi
 	@if [ -d "$(APP_DST)" ]; then \
 		echo "    Replacing existing $(APP_DST)"; \
 		rm -rf "$(APP_DST)"; \
