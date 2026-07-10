@@ -473,6 +473,16 @@ footer {
 }
 footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 
+/* ---------- part dividers (desktop vs mobile) ---------- */
+.part-divider { text-align: center; padding: 40px 24px 4px; }
+.part-divider span {
+  display: inline-block; font-size: 14px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-2);
+  background: var(--card); border: 1px solid var(--hairline);
+  padding: 7px 18px; border-radius: 999px;
+}
+.part-divider p { color: var(--ink-3); font-size: 14px; margin-top: 10px; }
+
 /* ---------- iOS app section (CSS replica of the iPhone UI) ---------- */
 .ios-phones { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
 .ios-phone {
@@ -543,13 +553,14 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <img class="app-icon" src="/assets/icon.png" alt="Voice-to-Markdown app icon" width="112" height="112">
     <h1>Voice-to-Markdown</h1>
     <p class="tagline">Talk. Get clean markdown. 100% local.</p>
-    <p class="sub">A macOS menu-bar app that turns your voice into structured markdown with whisper.cpp and any local LLM. No cloud. No API keys. Nothing leaves your Mac.</p>
+    <p class="sub">A macOS menu-bar app that turns your voice into structured markdown with whisper.cpp and any local LLM — plus an iPhone &amp; iPad app that runs 100% offline on Apple Intelligence. No cloud. No API keys. Nothing leaves your devices.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#install">Install in one line</a>
       <a class="btn btn-ghost" href="https://github.com/xajik/voice-to-md">★ View on GitHub</a>
     </div>
     <div class="badges">
       <span class="badge">🍎 macOS 13+</span>
+      <span class="badge">📱 iOS 26+ · iPhone 15 Pro+</span>
       <span class="badge">🔒 Fully local</span>
       <span class="badge">🆓 Free &amp; open source</span>
       <span class="badge">⚡️ Streams in real time</span>
@@ -585,6 +596,11 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
 </div>
 
 <main>
+<div class="part-divider" id="desktop">
+  <span>🖥️ Desktop app — macOS</span>
+  <p>Everything in this part is the Mac menu-bar app: it uses whisper.cpp and a local LLM server you run yourself.</p>
+</div>
+
 <section id="install">
   <div class="wrap">
     <h2>🚀 Install</h2>
@@ -708,10 +724,86 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
   </div>
 </section>
 
+<section id="dependencies">
+  <div class="wrap">
+    <h2>🧠 Desktop dependencies &amp; local LLM <small>(macOS only)</small></h2>
+    <p class="kicker"><strong>Mac app only — the iOS app needs none of this.</strong> Global Dictation only needs whisper.cpp — installed for you. Agent Mode talks to any <strong>OpenAI-compatible</strong> server running on your Mac (default <code>http://127.0.0.1:8000/v1</code>). Pick one:</p>
+
+    <div class="dep-block">
+      <pre><code>brew install xcodegen whisper-cpp ffmpeg   # build dependencies (install.sh does this)</code></pre>
+    </div>
+
+    <div class="servers">
+      <article class="server">
+        <h4>omlx <small>· Apple Silicon, fastest</small></h4>
+        <p class="url">http://127.0.0.1:8000/v1</p>
+        <p class="note"><code>brew install omlx</code> then <code>omlx serve &lt;model&gt;</code> — VTMD's default port, zero config.</p>
+      </article>
+      <article class="server">
+        <h4>Ollama</h4>
+        <p class="url">http://127.0.0.1:11434/v1</p>
+        <p class="note"><code>ollama pull qwen3.5</code> (or <code>gemma3</code>), then <code>ollama serve</code>.</p>
+      </article>
+      <article class="server">
+        <h4>LM Studio</h4>
+        <p class="url">http://127.0.0.1:1234/v1</p>
+        <p class="note">Grab a model in the app, start the local server.</p>
+      </article>
+      <article class="server">
+        <h4>llama.cpp</h4>
+        <p class="url">http://127.0.0.1:8080/v1</p>
+        <p class="note"><code>llama-server -m model.gguf --port 8080</code>.</p>
+      </article>
+    </div>
+
+    <table class="models">
+      <thead><tr><th>Recommended model</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Qwen3.5 27B</strong> (4-bit)</td><td>Best formatting quality; the default pick</td></tr>
+        <tr><td><strong>Gemma 26B</strong> (8-bit)</td><td>Fast, great instruction following</td></tr>
+      </tbody>
+    </table>
+
+    <div class="mac-window settings-mock" role="img" aria-label="Settings window: local LLM endpoint with model picker, and Whisper model dropdown">
+      <div class="titlebar">
+        <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light off"></span><span class="light off"></span></div>
+        <span class="title left">Settings</span>
+      </div>
+      <div class="body">
+        <h3>Local LLM</h3>
+        <p class="cap">OpenAI-compatible API (omlx, llama.cpp, LM Studio…)</p>
+        <div class="row">
+          <span class="field">http://127.0.0.1:8000/v1</span>
+          <span class="push-btn">Refresh</span>
+        </div>
+        <div class="row">
+          <span class="popup">gemma-4-26b-a4b-it-8bit
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#d5d5da" d="M8 2.5 11 6H5L8 2.5zM8 13.5 5 10h6l-3 3.5z"/></svg>
+          </span>
+          <span class="status"><span class="dot-g"></span>3 models</span>
+        </div>
+        <div class="sep"></div>
+        <h3>Whisper Model</h3>
+        <p class="cap">Speech-to-text (whisper.cpp, runs on-device)</p>
+        <div class="row">
+          <span class="popup narrow">Base (~150 MB) ✓
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#d5d5da" d="M8 2.5 11 6H5L8 2.5zM8 13.5 5 10h6l-3 3.5z"/></svg>
+          </span>
+          <span class="status"><span class="dot-g"></span>using Base</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="part-divider" id="mobile">
+  <span>📱 Mobile app — iOS</span>
+  <p>A separate app for iPhone &amp; iPad — fully offline, none of the desktop dependencies.</p>
+</div>
+
 <section id="ios">
   <div class="wrap">
     <h2>📱 Now on iPhone &amp; iPad</h2>
-    <p class="kicker">The same Agent Mode, fully on-device with <strong>Apple Intelligence</strong> — SpeechAnalyzer transcribes as you talk, Apple Foundation Models format the document. No server, no settings, nothing leaves the phone.</p>
+    <p class="kicker"><strong>iOS 26+ · iPhone 15 Pro or newer</strong> (Apple Intelligence required) · <strong>100% offline</strong>. The same Agent Mode with zero dependencies: SpeechAnalyzer transcribes on-device, Apple Foundation Models format the document. No LLM server, no whisper install, no settings — none of the desktop setup below applies. Works in airplane mode.</p>
 
     <div class="ios-phones">
 
@@ -783,92 +875,22 @@ model streams.</div>
     <p class="ios-caption">Session history with restore · live editor · Format / Edit / Append · MD / TXT / HTML · preview · Files-app access.</p>
 
     <div class="ios-badges" aria-hidden="true">
-      <span class="badge">iOS 26+</span>
+      <span class="badge">📲 iOS 26+</span>
+      <span class="badge">📱 iPhone 15 Pro or newer</span>
       <span class="badge">Apple Intelligence</span>
       <span class="badge">SpeechAnalyzer STT</span>
       <span class="badge">Foundation Models LLM</span>
-      <span class="badge">100% on-device</span>
+      <span class="badge">✈️ 100% offline — airplane-mode friendly</span>
     </div>
   </div>
 </section>
 
-<section id="dependencies">
-  <div class="wrap">
-    <h2>🧠 Dependencies &amp; local LLM</h2>
-    <p class="kicker">Global Dictation only needs whisper.cpp — installed for you. Agent Mode talks to any <strong>OpenAI-compatible</strong> server running on your Mac (default <code>http://127.0.0.1:8000/v1</code>). Pick one:</p>
-
-    <div class="dep-block">
-      <pre><code>brew install xcodegen whisper-cpp ffmpeg   # build dependencies (install.sh does this)</code></pre>
-    </div>
-
-    <div class="servers">
-      <article class="server">
-        <h4>omlx <small>· Apple Silicon, fastest</small></h4>
-        <p class="url">http://127.0.0.1:8000/v1</p>
-        <p class="note"><code>brew install omlx</code> then <code>omlx serve &lt;model&gt;</code> — VTMD's default port, zero config.</p>
-      </article>
-      <article class="server">
-        <h4>Ollama</h4>
-        <p class="url">http://127.0.0.1:11434/v1</p>
-        <p class="note"><code>ollama pull qwen3.5</code> (or <code>gemma3</code>), then <code>ollama serve</code>.</p>
-      </article>
-      <article class="server">
-        <h4>LM Studio</h4>
-        <p class="url">http://127.0.0.1:1234/v1</p>
-        <p class="note">Grab a model in the app, start the local server.</p>
-      </article>
-      <article class="server">
-        <h4>llama.cpp</h4>
-        <p class="url">http://127.0.0.1:8080/v1</p>
-        <p class="note"><code>llama-server -m model.gguf --port 8080</code>.</p>
-      </article>
-    </div>
-
-    <table class="models">
-      <thead><tr><th>Recommended model</th><th>Why</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Qwen3.5 27B</strong> (4-bit)</td><td>Best formatting quality; the default pick</td></tr>
-        <tr><td><strong>Gemma 26B</strong> (8-bit)</td><td>Fast, great instruction following</td></tr>
-      </tbody>
-    </table>
-
-    <div class="mac-window settings-mock" role="img" aria-label="Settings window: local LLM endpoint with model picker, and Whisper model dropdown">
-      <div class="titlebar">
-        <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light off"></span><span class="light off"></span></div>
-        <span class="title left">Settings</span>
-      </div>
-      <div class="body">
-        <h3>Local LLM</h3>
-        <p class="cap">OpenAI-compatible API (omlx, llama.cpp, LM Studio…)</p>
-        <div class="row">
-          <span class="field">http://127.0.0.1:8000/v1</span>
-          <span class="push-btn">Refresh</span>
-        </div>
-        <div class="row">
-          <span class="popup">gemma-4-26b-a4b-it-8bit
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#d5d5da" d="M8 2.5 11 6H5L8 2.5zM8 13.5 5 10h6l-3 3.5z"/></svg>
-          </span>
-          <span class="status"><span class="dot-g"></span>3 models</span>
-        </div>
-        <div class="sep"></div>
-        <h3>Whisper Model</h3>
-        <p class="cap">Speech-to-text (whisper.cpp, runs on-device)</p>
-        <div class="row">
-          <span class="popup narrow">Base (~150 MB) ✓
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#d5d5da" d="M8 2.5 11 6H5L8 2.5zM8 13.5 5 10h6l-3 3.5z"/></svg>
-          </span>
-          <span class="status"><span class="dot-g"></span>using Base</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 </main>
 
 <footer>
   <div class="wrap">
     <p class="lock">🔒 AVAudioEngine → whisper.cpp → local LLM → your screen.</p>
-    <p>That's the whole pipeline. Nothing leaves your Mac.</p>
+    <p>On iPhone: AVAudioEngine → SpeechAnalyzer → Foundation Models. Either way, nothing leaves your devices.</p>
     <p style="margin-top:14px"><a href="https://github.com/xajik/voice-to-md">Source on GitHub</a> · built for humans who think out loud.</p>
   </div>
 </footer>

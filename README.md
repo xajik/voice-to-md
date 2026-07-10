@@ -6,15 +6,29 @@
 
 <p align="center"><b>Talk. Get clean markdown. 100% local. 🔗 <a href="https://voice-to-md.xajik0.workers.dev/">voice-to-md.dev</a></b></p>
 
-A macOS menu-bar app that turns your voice into structured markdown using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text and any local LLM for formatting. No cloud. No API keys. Nothing leaves your Mac.
+Voice-to-Markdown turns your voice into structured documents — and it ships as **two apps**:
 
-Also on **iPhone & iPad**: the same Agent Mode, fully on-device with Apple Intelligence — see [📱 iOS app](#-ios-app) below.
+| | 🖥️ **Desktop — macOS** | 📱 **Mobile — iOS** |
+|---|---|---|
+| Platform | macOS 13+ (menu-bar app) | **iOS 26+**, **iPhone 15 Pro or newer** (Apple Intelligence required; Apple-Silicon iPads too) |
+| Speech-to-text | [whisper.cpp](https://github.com/ggerganov/whisper.cpp) | Apple SpeechAnalyzer (on-device) |
+| LLM | any local OpenAI-compatible server (omlx, Ollama, LM Studio, llama.cpp) | Apple Foundation Models (on-device) |
+| Dependencies | `whisper-cpp`, `ffmpeg`, a local LLM server | **none** — zero setup |
+| Network | 100% local — nothing leaves your Mac | **100% offline** — nothing leaves your phone |
+
+Jump to: [🖥️ Desktop app](#%EF%B8%8F-desktop-app-macos) · [📱 Mobile app](#-mobile-app-ios)
+
+---
+
+## 🖥️ Desktop app (macOS)
+
+A menu-bar app: voice → whisper.cpp → your local LLM → clean markdown. No cloud. No API keys. Nothing leaves your Mac. Everything in this part — including the dependencies and LLM-server setup below — applies to the **Mac app only**; the mobile app needs none of it.
 
 <img src="demo/agent-mode.jpg" alt="Agent Mode: spoken words become a structured spec, live" width="100%"/>
 
 *↑ This entire product spec was dictated by voice — a local LLM structured it in real time.*
 
-## ✨ Two modes
+### ✨ Two modes
 
 - **⌨️ Global Dictation — `⌘⌥]` anywhere.** Speak, and the transcript is typed straight into whatever field has focus. Terminal, browser, Slack — anything. A Spotlight-style pill shows what's happening:
 
@@ -24,7 +38,7 @@ Also on **iPhone & iPad**: the same Agent Mode, fully on-device with Apple Intel
 
   <img src="demo/status-bar.jpg" alt="Menu bar" width="420"/>
 
-## 🎛️ Agent Mode control panel
+### 🎛️ Agent Mode control panel
 
 Everything in Agent Mode is driven from one floating, draggable capsule that hovers over the editor:
 
@@ -49,7 +63,7 @@ The modes:
 
 The flow underneath: audio is transcribed by whisper.cpp in ~4 s chunks and buffered; once ~30 words accumulate (or you pause for 5 s, or hit **Send**), the buffer is flushed to the LLM using the prompt for the current mode and output format — and tokens stream straight into the editor.
 
-## 🚀 Quick Start
+### 🚀 Quick Start
 
 One line — installs dependencies, builds from source, and drops the app in /Applications:
 
@@ -69,7 +83,7 @@ First launch: grant **Microphone** + **Accessibility** access, then download a W
 
 **Signing:** builds are automatically signed with your "Apple Development" identity when one is in the keychain, so re-installs keep their Microphone/Accessibility grants. No identity → ad-hoc fallback (macOS will re-ask for permissions after updates). Override with `make install SIGN_IDENTITY="…"`.
 
-## 🧠 Local LLM Setup (Agent Mode)
+### 🧠 Local LLM Setup (Agent Mode, macOS only)
 
 Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
 
@@ -77,7 +91,7 @@ Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Sett
 
 Pick your server:
 
-### omlx (Apple Silicon, MLX — fastest on Mac)
+#### omlx (Apple Silicon, MLX — fastest on Mac)
 
 Serve any MLX model on port 8000 — VTMD's default, zero config needed:
 
@@ -86,7 +100,7 @@ brew install omlx
 omlx serve Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-4bit
 ```
 
-### Ollama
+#### Ollama
 
 ```bash
 brew install ollama
@@ -96,12 +110,12 @@ ollama serve
 
 Base URL: `http://127.0.0.1:11434/v1`
 
-### LM Studio
+#### LM Studio
 
 Download from [lmstudio.ai](https://lmstudio.ai), grab a model, start the local server.
 Base URL: `http://127.0.0.1:1234/v1`
 
-### llama.cpp
+#### llama.cpp
 
 ```bash
 brew install llama.cpp
@@ -110,7 +124,7 @@ llama-server -m your-model.gguf --port 8080
 
 Base URL: `http://127.0.0.1:8080/v1`
 
-### 🏆 Recommended models
+#### 🏆 Recommended models
 
 | Model | Why |
 |---|---|
@@ -119,12 +133,16 @@ Base URL: `http://127.0.0.1:8080/v1`
 
 Anything that follows instructions well works — VTMD streams tokens as they arrive, so even bigger models *feel* instant.
 
-## 📱 iOS App
+---
 
-Agent Mode, ported to iPhone and iPad (iOS 26+) — and still 100% on-device:
+## 📱 Mobile app (iOS)
 
-- **STT**: Apple's SpeechAnalyzer streams your speech to text live (volatile text shows in gray as you talk; finalized words feed the document).
-- **LLM**: Apple **Foundation Models** (requires an Apple Intelligence device) formats the transcript — no server, no settings.
+Agent Mode on your phone — **everything runs offline, on the device**. No LLM server, no whisper install, no settings, no network. None of the desktop dependencies above apply here.
+
+> **Requirements:** **iOS 26 or later** on an **Apple Intelligence device — iPhone 15 Pro or newer** (or an Apple-Silicon iPad). Apple Intelligence must be enabled in Settings; the app shows an actionable banner if it isn't.
+
+- **STT**: Apple's SpeechAnalyzer streams your speech to text live, fully on-device (volatile text shows in gray as you talk; finalized words feed the document).
+- **LLM**: Apple **Foundation Models** — the on-device Apple Intelligence model — formats the transcript. No server, no API keys, works in airplane mode.
 - Same three modes (**Format / Edit / Append**), same **MD / TXT / HTML** output formats, sessions restorable from history, documents visible in the Files app.
 
 <p align="center">
@@ -133,22 +151,24 @@ Agent Mode, ported to iPhone and iPad (iOS 26+) — and still 100% on-device:
   <img src="demo/appstore-ipad-13-editor.png" alt="iPad: editor" width="37%"/>
 </p>
 
-```bash
-make build-ios     # build for the iOS simulator
-make test-ios      # run the iOS test suite
-```
+Building from source: `make build-ios` / `make test-ios` (see [Development](#%EF%B8%8F-development)). Running on a device needs a development team: `xcodebuild -scheme VoiceToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
 
-Running on a device needs a development team: `xcodebuild -scheme VoiceToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
+---
 
 ## 🛠️ Development
 
 ```bash
+# macOS app
 make check      # verify dependencies
 make build      # release build + sign
 make test       # unit tests
 make generate   # regen .xcodeproj after editing project.yml
 make install    # build + install to /Applications
 make uninstall  # remove from /Applications
+
+# iOS app
+make build-ios  # build for the iOS simulator
+make test-ios   # run the iOS test suite
 ```
 
-Everything runs on-device: AVAudioEngine → whisper.cpp → local LLM → your screen. That's the whole pipeline.
+Both apps share one core (`Shared/`): transcript buffering, prompts, formats, session files. Desktop pipeline: AVAudioEngine → whisper.cpp → local LLM server. Mobile pipeline: AVAudioEngine → SpeechAnalyzer → Foundation Models. Either way, everything stays on your hardware.
