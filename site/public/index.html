@@ -473,12 +473,62 @@ footer {
 }
 footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 
+/* ---------- iOS app section (CSS replica of the iPhone UI) ---------- */
+.ios-phones { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+.ios-phone {
+  width: 290px; flex: 0 0 auto;
+  background: #f2f2f7; color: #1c1c1e;
+  border-radius: 42px; border: 6px solid #101014;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  overflow: hidden; position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  display: flex; flex-direction: column; height: 600px;
+}
+.ios-island { width: 86px; height: 22px; background: #101014; border-radius: 999px; margin: 10px auto 0; flex: 0 0 auto; }
+.ios-screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 6px 14px 12px; }
+.ios-large-title { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 14px 2px 12px; }
+.ios-nav-title { font-size: 13px; font-weight: 700; text-align: center; margin: 8px 0 10px; }
+.ios-section-label { font-size: 11.5px; font-weight: 600; color: #6e6e73; text-transform: none; margin: 0 4px 6px; }
+.ios-card { background: #fff; border-radius: 14px; overflow: hidden; }
+.ios-row { padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; }
+.ios-row + .ios-row { border-top: 1px solid rgba(0,0,0,0.08); }
+.ios-row .t { font-size: 12.5px; font-weight: 600; }
+.ios-row .p { font-size: 11px; color: #6e6e73; margin-top: 1px; }
+.ios-row .fmt { margin-left: auto; font-size: 8.5px; font-weight: 700; color: #aeaeb2; letter-spacing: 0.04em; }
+.ios-new-btn {
+  margin-top: auto; background: #0a84ff; color: #fff;
+  border-radius: 999px; text-align: center;
+  font-size: 14px; font-weight: 700; padding: 12px;
+}
+.ios-doc { flex: 1; font-family: var(--mono); font-size: 9.5px; line-height: 1.6; color: #3a3a3c; white-space: pre-wrap; overflow: hidden; padding: 2px 2px 8px; }
+.ios-raw-bar {
+  background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.07); border-radius: 12px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 600; color: #6e6e73; padding: 7px 10px; margin-bottom: 6px;
+}
+.ios-raw-bar .wc { margin-left: auto; font-weight: 500; color: #aeaeb2; }
+.ios-control {
+  background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.07); border-radius: 14px;
+  padding: 8px 10px 9px;
+}
+.ios-control .row1 { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.ios-control .row1 .state { font-size: 10.5px; font-weight: 700; }
+.ios-control .row1 .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.ios-control .fmt-pill { font-size: 8.5px; font-weight: 700; color: #0a84ff; background: rgba(10,132,255,0.14); border-radius: 999px; padding: 3px 8px; }
+.ios-control .rec { color: var(--red); }
+.ios-seg { display: flex; background: rgba(0,0,0,0.06); border-radius: 9px; padding: 2px; margin-top: 8px; }
+.ios-seg span { flex: 1; text-align: center; font-size: 10px; font-weight: 600; padding: 4px 0; color: #3a3a3c; border-radius: 7px; }
+.ios-seg .on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); font-weight: 700; }
+.ios-caption { text-align: center; color: var(--ink-3); font-size: 12.5px; margin-top: 10px; }
+.ios-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+
 @media (max-width: 720px) {
   section { padding: 26px 0; }
   .grid-2 { grid-template-columns: 1fr; }
   .hud-bubble { display: none; }
   .dictation-pill.floating .chip { display: none; }
   .menubar-mock .menu { margin-right: 18px; }
+  .ios-phone { width: 260px; height: 560px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dictation-pill.floating, .mic-pulse, .caret { animation: none; }
@@ -655,6 +705,90 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       <li><strong>The mode and output format pick the prompt.</strong> Format rewrites the whole document, Edit applies your instruction (to the selection, if any), Append formats only what's new — in Markdown, plain text, or HTML.</li>
       <li><strong>Tokens stream straight into the editor</strong> — and the document on disk (<code>.md</code> / <code>.txt</code> / <code>.html</code>) is updated after every flush.</li>
     </ol>
+  </div>
+</section>
+
+<section id="ios">
+  <div class="wrap">
+    <h2>📱 Now on iPhone &amp; iPad</h2>
+    <p class="kicker">The same Agent Mode, fully on-device with <strong>Apple Intelligence</strong> — SpeechAnalyzer transcribes as you talk, Apple Foundation Models format the document. No server, no settings, nothing leaves the phone.</p>
+
+    <div class="ios-phones">
+
+      <div class="ios-phone" role="img" aria-label="iOS app: session history screen with a New Session button pinned at the bottom">
+        <div class="ios-island" aria-hidden="true"></div>
+        <div class="ios-screen">
+          <div class="ios-large-title">Voice to MD</div>
+          <div class="ios-section-label">Recent Sessions</div>
+          <div class="ios-card">
+            <div class="ios-row">
+              <div><div class="t">14 Jul at 11:30 AM</div><div class="p">Product Sync — July 10</div></div>
+              <span class="fmt">MD</span>
+            </div>
+            <div class="ios-row">
+              <div><div class="t">13 Jul at 8:05 PM</div><div class="p">Weekend Groceries</div></div>
+              <span class="fmt">MD</span>
+            </div>
+            <div class="ios-row">
+              <div><div class="t">11 Jul at 1:20 PM</div><div class="p">Book Ideas — Voice Notes</div></div>
+              <span class="fmt">MD</span>
+            </div>
+          </div>
+          <div class="ios-new-btn">＋ New Session</div>
+        </div>
+      </div>
+
+      <div class="ios-phone" role="img" aria-label="iOS app: live markdown editor with raw-input bar and the agent control bar">
+        <div class="ios-island" aria-hidden="true"></div>
+        <div class="ios-screen">
+          <div class="ios-nav-title">14 Jul at 11:30 AM</div>
+          <div class="ios-doc"># Product Sync — July 10
+
+## Decisions
+- Ship the iOS beta to TestFlight
+- Keep transcription fully on-device
+- Markdown stays the default format
+
+## Action Items
+1. **Igor** — App Store screenshots
+2. **Design** — history layout on iPad
+3. **QA** — edit and append modes
+
+## Notes
+The dictation flow feels fast. Silence
+triggers the formatting pass about five
+seconds after you stop speaking, and
+the document updates live as the
+model streams.</div>
+          <div class="ios-raw-bar"><span aria-hidden="true">⌃</span> Raw input <span class="wc">71 words</span></div>
+          <div class="ios-control">
+            <div class="row1">
+              <span aria-hidden="true">✈️</span>
+              <span class="rec" aria-hidden="true">🎙️</span>
+              <span class="state">Recording</span>
+              <span class="right">
+                <span class="fmt-pill">MD</span>
+                <span aria-hidden="true">👁️</span>
+                <span aria-hidden="true">🗑️</span>
+              </span>
+            </div>
+            <div class="ios-seg" aria-hidden="true">
+              <span class="on">Format</span><span>Edit</span><span>Append</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <p class="ios-caption">Session history with restore · live editor · Format / Edit / Append · MD / TXT / HTML · preview · Files-app access.</p>
+
+    <div class="ios-badges" aria-hidden="true">
+      <span class="badge">iOS 26+</span>
+      <span class="badge">Apple Intelligence</span>
+      <span class="badge">SpeechAnalyzer STT</span>
+      <span class="badge">Foundation Models LLM</span>
+      <span class="badge">100% on-device</span>
+    </div>
   </div>
 </section>
 

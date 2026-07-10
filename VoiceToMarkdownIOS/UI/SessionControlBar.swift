@@ -124,9 +124,10 @@ struct SessionControlBar: View {
             Text(controller.outputFormat.rawValue.uppercased())
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.secondary)
+                .padding(.horizontal, 10)
                 .frame(height: 32)
+                .background(.quaternary, in: Capsule())
         }
-        .fixedSize()
     }
 
     private var previewButton: some View {

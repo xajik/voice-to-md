@@ -8,6 +8,8 @@
 
 A macOS menu-bar app that turns your voice into structured markdown using [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for speech-to-text and any local LLM for formatting. No cloud. No API keys. Nothing leaves your Mac.
 
+Also on **iPhone & iPad**: the same Agent Mode, fully on-device with Apple Intelligence — see [📱 iOS app](#-ios-app) below.
+
 <img src="demo/agent-mode.jpg" alt="Agent Mode: spoken words become a structured spec, live" width="100%"/>
 
 *↑ This entire product spec was dictated by voice — a local LLM structured it in real time.*
@@ -116,6 +118,27 @@ Base URL: `http://127.0.0.1:8080/v1`
 | **Gemma 26B** (8-bit) | Fast, great instruction following |
 
 Anything that follows instructions well works — VTMD streams tokens as they arrive, so even bigger models *feel* instant.
+
+## 📱 iOS App
+
+Agent Mode, ported to iPhone and iPad (iOS 26+) — and still 100% on-device:
+
+- **STT**: Apple's SpeechAnalyzer streams your speech to text live (volatile text shows in gray as you talk; finalized words feed the document).
+- **LLM**: Apple **Foundation Models** (requires an Apple Intelligence device) formats the transcript — no server, no settings.
+- Same three modes (**Format / Edit / Append**), same **MD / TXT / HTML** output formats, sessions restorable from history, documents visible in the Files app.
+
+<p align="center">
+  <img src="demo/appstore-iphone-6.9-sessions.png" alt="iOS: session history" width="30%"/>
+  <img src="demo/appstore-iphone-6.9-editor.png" alt="iOS: live markdown editor with agent control bar" width="30%"/>
+  <img src="demo/appstore-ipad-13-editor.png" alt="iPad: editor" width="37%"/>
+</p>
+
+```bash
+make build-ios     # build for the iOS simulator
+make test-ios      # run the iOS test suite
+```
+
+Running on a device needs a development team: `xcodebuild -scheme VoiceToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
 
 ## 🛠️ Development
 

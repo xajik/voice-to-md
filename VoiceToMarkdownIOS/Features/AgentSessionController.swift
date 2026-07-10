@@ -96,17 +96,19 @@ final class AgentSessionController: ObservableObject {
 
         var restored = VTMDSession(restoring: listing, modelSize: .base)
 
+        // Unlike a new session, restore succeeds even when STT is unavailable
+        // (no speech models, simulator): the document is on disk and can be
+        // viewed, edited, and previewed — only recording needs the recognizer.
         do {
             try await connectSTT()
-            restored.state = .paused
-            session = restored
-            vtmdLog("SESSION", "Restored: doc=\(restored.docPath.path)")
         } catch {
-            vtmdLog("SESSION", "Error restoring session: \(error.localizedDescription)")
-            self.error = error.localizedDescription
+            // Logged only; beginRecording surfaces it if recording is attempted.
+            vtmdLog("SESSION", "Restored without STT: \(error.localizedDescription)")
             stt = nil
-            session = nil
         }
+        restored.state = .paused
+        session = restored
+        vtmdLog("SESSION", "Restored: doc=\(restored.docPath.path)")
     }
 
     private func connectSTT() async throws {
@@ -134,7 +136,13 @@ final class AgentSessionController: ObservableObject {
     }
 
     private func beginRecording() async {
-        guard session != nil, let stt else { return }
+        guard session != nil else { return }
+        guard let stt else {
+            // Restored without a recognizer (see restoreSession).
+            error = "Transcription is unavailable — recording is disabled for this session."
+            session?.state = .paused
+            return
+        }
         guard await AudioCaptureService.requestPermission() else {
             vtmdLog("SESSION", "Microphone permission denied")
             error = "Microphone access denied. Enable it in Settings → Privacy & Security → Microphone."

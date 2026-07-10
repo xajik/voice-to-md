@@ -64,7 +64,20 @@ struct SessionListView: View {
             .navigationDestination(isPresented: $showSession) {
                 SessionView(controller: controller)
             }
-            .onAppear { refreshSessions() }
+            .onAppear {
+                refreshSessions()
+                #if DEBUG
+                // Screenshot automation: simctl can't tap, so an explicit
+                // launch argument drives navigation into the latest session.
+                if CommandLine.arguments.contains("--screenshot-restore-latest"),
+                   let latest = sessions.first, !showSession {
+                    Task {
+                        await controller.restoreSession(latest)
+                        if controller.session != nil { showSession = true }
+                    }
+                }
+                #endif
+            }
         }
     }
 
