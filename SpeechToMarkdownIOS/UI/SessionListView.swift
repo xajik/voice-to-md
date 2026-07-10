@@ -39,6 +39,13 @@ struct SessionListView: View {
                     } else {
                         ForEach(sessions) { listing in
                             sessionRow(listing)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        deleteSession(listing)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                         }
                     }
                 }
@@ -83,6 +90,22 @@ struct SessionListView: View {
 
     private func refreshSessions() {
         sessions = STMDFileManager.shared.listSessions()
+    }
+
+    private func deleteSession(_ listing: SessionListing) {
+        Task {
+            // The active session's files are still open for writing; stop it
+            // first so we don't delete out from under an in-flight flush.
+            if controller.session?.id == listing.id {
+                await controller.stopSession()
+            }
+            do {
+                try STMDFileManager.shared.deleteSession(listing)
+                sessions.removeAll { $0.id == listing.id }
+            } catch {
+                self.controller.error = error.localizedDescription
+            }
+        }
     }
 
     private func sessionRow(_ listing: SessionListing) -> some View {

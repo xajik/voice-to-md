@@ -70,6 +70,11 @@ final class STMDFileManager {
         Self.listSessions(in: speechToMarkdownDir)
     }
 
+    /// Removes a session's directory (raw transcript + formatted doc) from disk.
+    func deleteSession(_ listing: SessionListing) throws {
+        try FileManager.default.removeItem(at: listing.dirPath)
+    }
+
     /// Directory-parameterized so it's testable against a temp directory
     /// instead of the real `~/.stmd` tree.
     static func listSessions(in directory: URL) -> [SessionListing] {

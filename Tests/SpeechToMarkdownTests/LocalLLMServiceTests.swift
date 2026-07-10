@@ -54,7 +54,7 @@ final class LocalLLMServiceTests: XCTestCase {
             format: .md
         )
         let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
-        XCTAssertEqual(messages[0]["content"], LocalLLMService.editSystemPrompt(for: .md))
+        XCTAssertEqual(messages[0]["content"], EditPrompt.system(for: .md))
 
         let userContent = try XCTUnwrap(messages[1]["content"])
         let payload = try XCTUnwrap(
@@ -87,7 +87,7 @@ final class LocalLLMServiceTests: XCTestCase {
             format: .md
         )
         let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
-        XCTAssertEqual(messages[0]["content"], LocalLLMService.appendSystemPrompt(for: .md))
+        XCTAssertEqual(messages[0]["content"], AppendPrompt.system(for: .md))
 
         let userContent = try XCTUnwrap(messages[1]["content"])
         let payload = try XCTUnwrap(
@@ -103,9 +103,9 @@ final class LocalLLMServiceTests: XCTestCase {
     func testSystemPromptsIncludeFormatExpectationsPerModeAndFormat() throws {
         for format in OutputFormat.allCases {
             let prompts = [
-                LocalLLMService.systemPrompt(for: format),
-                LocalLLMService.editSystemPrompt(for: format),
-                LocalLLMService.appendSystemPrompt(for: format)
+                FormatPrompt.system(for: format),
+                EditPrompt.system(for: format),
+                AppendPrompt.system(for: format)
             ]
             for prompt in prompts {
                 XCTAssertTrue(prompt.contains(format.promptExpectations),
@@ -119,9 +119,9 @@ final class LocalLLMServiceTests: XCTestCase {
     func testNoThinkFalseDropsControlToken() {
         for format in OutputFormat.allCases {
             let prompts = [
-                LocalLLMService.systemPrompt(for: format, noThink: false),
-                LocalLLMService.editSystemPrompt(for: format, noThink: false),
-                LocalLLMService.appendSystemPrompt(for: format, noThink: false)
+                FormatPrompt.system(for: format, noThink: false),
+                EditPrompt.system(for: format, noThink: false),
+                AppendPrompt.system(for: format, noThink: false)
             ]
             for prompt in prompts {
                 XCTAssertFalse(prompt.contains("/no_think"),
@@ -163,7 +163,7 @@ final class LocalLLMServiceTests: XCTestCase {
                 model: "m", currentDocument: "doc", newTranscript: "t", format: format
             )
             let messages = try XCTUnwrap(body["messages"] as? [[String: String]])
-            XCTAssertEqual(messages[0]["content"], LocalLLMService.systemPrompt(for: format))
+            XCTAssertEqual(messages[0]["content"], FormatPrompt.system(for: format))
         }
     }
 

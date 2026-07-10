@@ -15,7 +15,7 @@ final class FoundationModelsAgentService: AgentLLMService {
 
     /// Loads model resources ahead of the first flush to cut its latency.
     func prewarm(format: OutputFormat) {
-        LanguageModelSession(instructions: LocalLLMService.systemPrompt(for: format, noThink: false))
+        LanguageModelSession(instructions: FormatPrompt.system(for: format, noThink: false))
             .prewarm()
     }
 
@@ -23,7 +23,7 @@ final class FoundationModelsAgentService: AgentLLMService {
         currentDocument: String, newTranscript: String, format: OutputFormat
     ) -> AsyncThrowingStream<String, Error> {
         stream(
-            instructions: LocalLLMService.systemPrompt(for: format, noThink: false),
+            instructions: FormatPrompt.system(for: format, noThink: false),
             prompt: LocalLLMService.formatUserPayload(
                 currentDocument: currentDocument, newTranscript: newTranscript
             )
@@ -34,7 +34,7 @@ final class FoundationModelsAgentService: AgentLLMService {
         currentDocument: String, instruction: String, userFocus: String?, format: OutputFormat
     ) -> AsyncThrowingStream<String, Error> {
         stream(
-            instructions: LocalLLMService.editSystemPrompt(for: format, noThink: false),
+            instructions: EditPrompt.system(for: format, noThink: false),
             prompt: LocalLLMService.editUserPayload(
                 currentDocument: currentDocument, instruction: instruction, userFocus: userFocus
             )
@@ -45,7 +45,7 @@ final class FoundationModelsAgentService: AgentLLMService {
         recentContext: String, newTranscript: String, format: OutputFormat
     ) -> AsyncThrowingStream<String, Error> {
         stream(
-            instructions: LocalLLMService.appendSystemPrompt(for: format, noThink: false),
+            instructions: AppendPrompt.system(for: format, noThink: false),
             prompt: LocalLLMService.appendUserPayload(
                 recentContext: recentContext, newTranscript: newTranscript
             )

@@ -10,9 +10,9 @@ final class FoundationModelsPromptTests: XCTestCase {
     func testNoThinkPromptsHaveNoControlToken() {
         for format in OutputFormat.allCases {
             let prompts = [
-                LocalLLMService.systemPrompt(for: format, noThink: false),
-                LocalLLMService.editSystemPrompt(for: format, noThink: false),
-                LocalLLMService.appendSystemPrompt(for: format, noThink: false)
+                FormatPrompt.system(for: format, noThink: false),
+                EditPrompt.system(for: format, noThink: false),
+                AppendPrompt.system(for: format, noThink: false)
             ]
             for prompt in prompts {
                 XCTAssertFalse(prompt.contains("/no_think"))
