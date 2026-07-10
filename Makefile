@@ -1,13 +1,15 @@
 .PHONY: setup generate open build build-debug build-ios test test-verbose test-ios lint lint-fix clean clean-all run deps deps-install check install uninstall dmg _sign
 
-SCHEME        = VoiceToMarkdown
+SCHEME        = SpeechToMarkdown
 CONFIGURATION = Release
 BUILD_DIR     = .build
-APP_NAME      = VoiceToMarkdown.app
+APP_NAME      = SpeechToMarkdown.app
 APP_PATH      = $(BUILD_DIR)/Build/Products/$(CONFIGURATION)/$(APP_NAME)
 DEBUG_APP     = $(BUILD_DIR)/Build/Products/Debug/$(APP_NAME)
 APP_DST       = /Applications/$(APP_NAME)
-ENTITLEMENTS  = VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements
+ENTITLEMENTS  = SpeechToMarkdown/Resources/SpeechToMarkdown.entitlements
+LEGACY_APP_NAME = VoiceToMarkdown.app
+LEGACY_APP_DST  = /Applications/$(LEGACY_APP_NAME)
 
 # Signing identity. Ad-hoc signatures change on every build, which silently
 # invalidates TCC grants (Microphone, Accessibility) — so auto-detect a stable
@@ -60,10 +62,10 @@ deps-install:
 generate:
 	@echo "Generating Xcode project..."
 	xcodegen generate
-	@echo "  VoiceToMarkdown.xcodeproj ready."
+	@echo "  SpeechToMarkdown.xcodeproj ready."
 
 open: generate
-	open VoiceToMarkdown.xcodeproj
+	open SpeechToMarkdown.xcodeproj
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -90,7 +92,7 @@ run: build
 # Simulator builds are unsigned; device builds need a real team:
 #   make generate DEVELOPMENT_TEAM=XXXXXXXXXX && xcodebuild -scheme $(IOS_SCHEME) ...
 
-IOS_SCHEME = VoiceToMarkdownIOS
+IOS_SCHEME = SpeechToMarkdownIOS
 IOS_XCB_FLAGS = -scheme $(IOS_SCHEME) -derivedDataPath $(BUILD_DIR) \
 	CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 IOS_DEST ?= platform=iOS Simulator,name=iPhone 17 Pro
@@ -146,10 +148,10 @@ check:
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -rf VoiceToMarkdown.xcodeproj
+	rm -rf SpeechToMarkdown.xcodeproj
 
 clean-all: clean
-	rm -rf ~/Library/Developer/Xcode/DerivedData/VoiceToMarkdown-*
+	rm -rf ~/Library/Developer/Xcode/DerivedData/SpeechToMarkdown-*
 
 # ── Local install ─────────────────────────────────────────────────────────────
 #
@@ -160,7 +162,7 @@ clean-all: clean
 
 install:
 	@echo ""
-	@echo "=== Voice-to-Markdown installer ==="
+	@echo "=== Speech-to-Markdown installer ==="
 	@echo ""
 	@[ "$$(uname -s)" = "Darwin" ] || (echo "Error: macOS only." && exit 1)
 	@command -v brew > /dev/null 2>&1 \
@@ -180,19 +182,26 @@ install:
 	@[ -d "$(APP_PATH)" ] \
 		|| (echo "Error: Build finished but $(APP_PATH) was not produced." && exit 1)
 	@echo "==> Installing to /Applications…"
+	@if pkill -x SpeechToMarkdown 2>/dev/null; then \
+		echo "    Quit running SpeechToMarkdown"; sleep 1; \
+	fi
 	@if pkill -x VoiceToMarkdown 2>/dev/null; then \
-		echo "    Quit running VoiceToMarkdown"; sleep 1; \
+		echo "    Quit running VoiceToMarkdown (old app)"; sleep 1; \
 	fi
 	@if [ -d "$(APP_DST)" ]; then \
 		echo "    Replacing existing $(APP_DST)"; \
 		rm -rf "$(APP_DST)"; \
+	fi
+	@if [ -d "$(LEGACY_APP_DST)" ]; then \
+		echo "    Removing old $(LEGACY_APP_DST)"; \
+		rm -rf "$(LEGACY_APP_DST)"; \
 	fi
 	@cp -R "$(APP_PATH)" "$(APP_DST)"
 	@echo ""
 	@echo "==> Done! 🎙️"
 	@echo ""
 	@echo "Next steps:"
-	@echo "  1. Open VoiceToMarkdown from /Applications (menu-bar icon appears top-right)."
+	@echo "  1. Open SpeechToMarkdown from /Applications (menu-bar icon appears top-right)."
 	@echo "  2. Grant Microphone and Accessibility access when macOS asks."
 	@echo "  3. Open Settings… from the menu bar and download a Whisper model"
 	@echo "     (Base, ~150 MB, is a great start)."

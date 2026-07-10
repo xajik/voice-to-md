@@ -28,10 +28,10 @@ jobs:
     timeout-minutes: 60
 
     env:
-      SCHEME: VoiceToMarkdown
-      APP_NAME: VoiceToMarkdown
-      BUNDLE_ID: com.vtmd.voicetomarkdown
-      ENTITLEMENTS: VoiceToMarkdown/Resources/VoiceToMarkdown.entitlements
+      SCHEME: SpeechToMarkdown
+      APP_NAME: SpeechToMarkdown
+      BUNDLE_ID: com.stmd.speechtomarkdown
+      ENTITLEMENTS: SpeechToMarkdown/Resources/SpeechToMarkdown.entitlements
 
     steps:
       - name: Checkout Repository
@@ -181,7 +181,7 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
             <channel>
-              <title>VoiceToMarkdown Updates</title>
+              <title>SpeechToMarkdown Updates</title>
               <item>
                 <title>Version $VERSION</title>
                 <sparkle:version>$VERSION</sparkle:version>
@@ -199,8 +199,8 @@ jobs:
         shell: bash
         run: |
           {
-            echo "NOTES<<VTMD_EOF"
-            echo "## VoiceToMarkdown $VERSION"
+            echo "NOTES<<STMD_EOF"
+            echo "## SpeechToMarkdown $VERSION"
             echo ""
             if [ "$HAS_CERT" = "true" ] && [ "$CAN_NOTARIZE" = "true" ]; then
               echo "Signed with a Developer ID certificate and notarized by Apple — open it like any other app."
@@ -208,7 +208,7 @@ jobs:
               echo "### ⚠️ Bypass Gatekeeper (Required)"
               echo "This build is not signed with an Apple Developer ID certificate, so macOS will prevent it from launching normally at first."
               echo ""
-              echo "1. Download and open \`VoiceToMarkdown-$VERSION.dmg\`."
+              echo "1. Download and open \`SpeechToMarkdown-$VERSION.dmg\`."
               echo "2. Drag the app to your **Applications** folder."
               echo "3. **Do not double-click the app to open it.** Instead, **Right-click (or Control-click)** the app icon and select **Open**."
               echo "4. Click **Open** on the confirmation prompt. You only need to do this once!"
@@ -217,13 +217,13 @@ jobs:
             echo "### Requirements"
             echo "- macOS 13.0+"
             echo "- Dependencies: \`brew install whisper-cpp ffmpeg\`"
-            echo "VTMD_EOF"
+            echo "STMD_EOF"
           } >> "$GITHUB_ENV"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "VoiceToMarkdown ${{ env.VERSION }}"
+          name: "SpeechToMarkdown ${{ env.VERSION }}"
           body: ${{ env.NOTES }}
           files: |
             ${{ env.DMG_PATH }}

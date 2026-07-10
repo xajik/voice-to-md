@@ -22,9 +22,9 @@ make install        # deps + build + copy to /Applications (install.sh delegates
 
 **Run a single test class:**
 ```bash
-xcodebuild -scheme VoiceToMarkdown -configuration Debug -derivedDataPath .build \
+xcodebuild -scheme SpeechToMarkdown -configuration Debug -derivedDataPath .build \
   -destination 'platform=macOS' \
-  -only-testing:VoiceToMarkdownTests/TranscriptBufferTests \
+  -only-testing:SpeechToMarkdownTests/TranscriptBufferTests \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO test
 ```
 
@@ -41,7 +41,7 @@ Menu-bar macOS app, two flows, both local-only (no cloud services):
 
 ### Entry point and UI ownership
 
-`VoiceToMarkdownApp.swift` is `@main` but its `body` only exposes an empty `Settings` scene. All real setup is in `AppDelegate`: status bar item, `SessionCoordinator`, `GlobalDictationManager`, the dictation `NSPanel`, and windows created on demand. **Any window created here must set `isReleasedWhenClosed = false` and be retained in a property** — otherwise AppKit + ARC double-release it on close and crash in the close animation.
+`SpeechToMarkdownApp.swift` is `@main` but its `body` only exposes an empty `Settings` scene. All real setup is in `AppDelegate`: status bar item, `SessionCoordinator`, `GlobalDictationManager`, the dictation `NSPanel`, and windows created on demand. **Any window created here must set `isReleasedWhenClosed = false` and be retained in a property** — otherwise AppKit + ARC double-release it on close and crash in the close animation.
 
 ### Agent mode pipeline
 
@@ -50,10 +50,10 @@ Menu-bar macOS app, two flows, both local-only (no cloud services):
 - `WhisperService` (whisper-cli subprocess). `isNoiseOnly()` filters annotation-only chunks like `(wind blowing)` before they reach the buffer.
 - `TranscriptBuffer` actor — two-buffer accumulation (30-word flush threshold; pending queue while the LLM is busy).
 - `LocalLLMService` — `listModels()` + streaming `formatTranscript()`/`editDocument()`/`appendTranscript()` (SSE); `cleanOutput()` strips `<think>` blocks and code fences. Partial output streams straight into `coordinator.markdown`. System prompts are per-mode **functions** taking an `OutputFormat` — each appends the format's `promptExpectations` (rules + example) and ends with `/no_think`. Payload key is `current_document` (format-neutral).
-- `OutputFormat` (Models/) — txt/md/html; drives the system prompt, the HUD dropdown, and the session file extension. Persisted in `BackendSettings` (`vtmd.outputFormat`); snapshotted per flush alongside `mode` so mid-stream changes can't corrupt an in-flight request. Changing it mid-session renames the document file and restarts the `FileWatcher` (`migrateSessionDocument()`).
+- `OutputFormat` (Models/) — txt/md/html; drives the system prompt, the HUD dropdown, and the session file extension. Persisted in `BackendSettings` (`stmd.outputFormat`); snapshotted per flush alongside `mode` so mid-stream changes can't corrupt an in-flight request. Changing it mid-session renames the document file and restarts the `FileWatcher` (`migrateSessionDocument()`).
 - `BackendSettings` — UserDefaults-backed base URL + model name (empty = auto-pick first model from `/v1/models`) + output format.
-- Session files: `~/.vtmd/voice-to-markdown/{unix_ms}/{id}.txt` (append-only raw) and `{id}.{txt|md|html}` (rewritten; extension follows the output format — `VTMDSession.docPath`). When the format is `txt`, `docPath` and the raw transcript path are the same file.
-- `VTMDFileManager.listSessions()` scans `voice-to-markdown/` for the recent-sessions list (`SessionListing`, Models/): format is detected by probing for a second `{id}.md`/`{id}.html` file alongside the always-present `{id}.txt` (no second file ⇒ `txt`). Directory-parameterized as `listSessions(in:)` for testing against a temp dir instead of the real `~/.vtmd` tree.
+- Session files: `~/.stmd/speech-to-markdown/{unix_ms}/{id}.txt` (append-only raw) and `{id}.{txt|md|html}` (rewritten; extension follows the output format — `STMDSession.docPath`). When the format is `txt`, `docPath` and the raw transcript path are the same file.
+- `STMDFileManager.listSessions()` scans `speech-to-markdown/` for the recent-sessions list (`SessionListing`, Models/): format is detected by probing for a second `{id}.md`/`{id}.html` file alongside the always-present `{id}.txt` (no second file ⇒ `txt`). Directory-parameterized as `listSessions(in:)` for testing against a temp dir instead of the real `~/.stmd` tree.
 - `SessionCoordinator.restoreSession(_:)` reloads a `SessionListing` from disk into the live session (state `.paused`, same `id`/`dirPath` so subsequent recording appends to the same files) — stops any active session first, non-destructive since prior content is already persisted. `modelSize` isn't stored per session on disk, so restore uses whichever whisper model is currently resolved. Shares LLM/whisper/audio wiring with `startSession` via `connectServices(modelSize:)`.
 - HUD control panel (`HUDBubbleView`): send, mic, status | mode switcher + format dropdown | preview (opens `docPath` via `NSWorkspace`, e.g. browser for html) | clear session. The agent window also has a native `NSToolbar` (`AppDelegate.makeAgentToolbar()`, unified style) with a history button that shows `SessionHistoryView` in an `NSPopover` anchored to the toolbar button — kept out of the floating HUD bubble since it's window chrome, not a recording control.
 
@@ -71,12 +71,12 @@ Menu-bar macOS app, two flows, both local-only (no cloud services):
 | `transcribeChunkSeconds` | `SessionCoordinator` | 4 s |
 | silence flush delay | `AudioCaptureService` | 5 s (timer scheduled on main queue — tap thread has no run loop) |
 | default LLM URL | `BackendSettings` | `http://127.0.0.1:8000/v1` |
-| default output format | `BackendSettings` / `OutputFormat` | `md` (persisted, `vtmd.outputFormat`) |
+| default output format | `BackendSettings` / `OutputFormat` | `md` (persisted, `stmd.outputFormat`) |
 | default hotkey | `GlobalDictationManager` | `⌘⌥]` (0x1E, cmdKey\|optionKey) |
 
 ## Test Layout
 
-Test files in `Tests/VoiceToMarkdownTests/` are pure logic — no network, audio hardware, or LLM server required. `LocalLLMServiceTests` covers request building (per mode × output format), SSE parsing, and output cleaning via the service's static helpers; `OutputFormatTests` covers the format enum and its prompt expectations.
+Test files in `Tests/SpeechToMarkdownTests/` are pure logic — no network, audio hardware, or LLM server required. `LocalLLMServiceTests` covers request building (per mode × output format), SSE parsing, and output cleaning via the service's static helpers; `OutputFormatTests` covers the format enum and its prompt expectations.
 
 ## Concurrency Convention
 

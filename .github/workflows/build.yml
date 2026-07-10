@@ -35,7 +35,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -scheme VoiceToMarkdown \
+            -scheme SpeechToMarkdown \
             -configuration Debug \
             -derivedDataPath .build \
             CODE_SIGN_IDENTITY="" \
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -scheme VoiceToMarkdown \
+            -scheme SpeechToMarkdown \
             -configuration Debug \
             -derivedDataPath .build \
             CODE_SIGN_IDENTITY="" \
@@ -113,7 +113,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -scheme VoiceToMarkdownIOS \
+            -scheme SpeechToMarkdownIOS \
             -configuration Debug \
             -derivedDataPath .build \
             -destination 'generic/platform=iOS Simulator' \
@@ -126,7 +126,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild \
-            -scheme VoiceToMarkdownIOS \
+            -scheme SpeechToMarkdownIOS \
             -configuration Debug \
             -derivedDataPath .build \
             -destination "id=$SIMULATOR_UDID" \

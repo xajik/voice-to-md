@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voice-to-Markdown — Talk. Get clean markdown. 100% local.</title>
+<title>Speech-to-Markdown — Talk. Get clean markdown. 100% local.</title>
 <meta name="description" content="A free macOS menu-bar app that turns your voice into structured markdown using whisper.cpp and any local LLM. Global dictation anywhere with ⌘⌥], live markdown editor. No cloud, no API keys — nothing leaves your Mac.">
 <link rel="canonical" href="https://voice-to-md.xajik0.workers.dev/">
 <link rel="icon" type="image/png" href="/assets/icon.png">
@@ -12,12 +12,12 @@
 <meta name="theme-color" content="#0e0e12">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="Voice-to-Markdown — Talk. Get clean markdown. 100% local.">
+<meta property="og:title" content="Speech-to-Markdown — Talk. Get clean markdown. 100% local.">
 <meta property="og:description" content="macOS menu-bar app: voice → whisper.cpp → your local LLM → clean markdown. Global dictation anywhere, live markdown editor. Nothing leaves your Mac.">
 <meta property="og:url" content="https://voice-to-md.xajik0.workers.dev/">
 <meta property="og:image" content="https://voice-to-md.xajik0.workers.dev/assets/agent-mode.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Voice-to-Markdown — Talk. Get clean markdown. 100% local.">
+<meta name="twitter:title" content="Speech-to-Markdown — Talk. Get clean markdown. 100% local.">
 <meta name="twitter:description" content="macOS menu-bar app: voice → whisper.cpp → your local LLM → clean markdown. Nothing leaves your Mac.">
 <meta name="twitter:image" content="https://voice-to-md.xajik0.workers.dev/assets/agent-mode.jpg">
 
@@ -25,7 +25,7 @@
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "Voice-to-Markdown",
+  "name": "Speech-to-Markdown",
   "operatingSystem": "macOS",
   "applicationCategory": "UtilitiesApplication",
   "description": "A macOS menu-bar app that turns your voice into structured markdown using whisper.cpp for speech-to-text and any local LLM for formatting. Fully local: no cloud, no API keys.",
@@ -550,8 +550,8 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
 
 <header class="hero">
   <div class="wrap">
-    <img class="app-icon" src="/assets/icon.png" alt="Voice-to-Markdown app icon" width="112" height="112">
-    <h1>Voice-to-Markdown</h1>
+    <img class="app-icon" src="/assets/icon.png" alt="Speech-to-Markdown app icon" width="112" height="112">
+    <h1>Speech-to-Markdown</h1>
     <p class="tagline">Talk. Get clean markdown. 100% local.</p>
     <p class="sub">A macOS menu-bar app that turns your voice into structured markdown with whisper.cpp and any local LLM — plus an iPhone &amp; iPad app that runs 100% offline on Apple Intelligence. No cloud. No API keys. Nothing leaves your devices.</p>
     <div class="cta-row">
@@ -573,7 +573,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <div class="mac-window" id="demo-window">
       <div class="titlebar">
         <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
-        <span class="title">Voice to Markdown</span>
+        <span class="title">Speech to Markdown</span>
       </div>
       <div class="editor" id="md-out" aria-live="off"></div>
       <div class="hud-bubble" aria-hidden="true">
@@ -655,7 +655,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       <article class="card">
         <h3>📝 Agent Mode</h3>
         <p>Speak freely; a local LLM streams your words into a clean, structured document in real time — Markdown, plain text, or HTML. The raw transcript stays one click away. Start it from the menu bar.</p>
-        <div class="mock menubar-mock" role="img" aria-label="macOS menu bar with the Voice-to-Markdown menu open: Start Agent Mode, Global Dictation, Settings, Quit">
+        <div class="mock menubar-mock" role="img" aria-label="macOS menu bar with the Speech-to-Markdown menu open: Start Agent Mode, Global Dictation, Settings, Quit">
           <div class="strip" aria-hidden="true">
             <span class="sicon active"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
             <span class="sicon"><svg viewBox="0 0 24 24"><path d="M1 9l2 2a12.7 12.7 0 0 1 18 0l2-2A15.6 15.6 0 0 0 1 9zm4 4l2 2a7 7 0 0 1 10 0l2-2a9.9 9.9 0 0 0-14 0zm4 4l3 3 3-3a4.2 4.2 0 0 0-6 0z"/></svg></span>
@@ -737,7 +737,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       <article class="server">
         <h4>omlx <small>· Apple Silicon, fastest</small></h4>
         <p class="url">http://127.0.0.1:8000/v1</p>
-        <p class="note"><code>brew install omlx</code> then <code>omlx serve &lt;model&gt;</code> — VTMD's default port, zero config.</p>
+        <p class="note"><code>brew install omlx</code> then <code>omlx serve &lt;model&gt;</code> — Speech-to-Markdown's default port, zero config.</p>
       </article>
       <article class="server">
         <h4>Ollama</h4>
@@ -895,7 +895,7 @@ model streams.</div>
   </div>
 </footer>
 
-<a class="dictation-pill floating" href="https://github.com/xajik/voice-to-md" aria-label="Listening… — view the Voice-to-Markdown source on GitHub">
+<a class="dictation-pill floating" href="https://github.com/xajik/voice-to-md" aria-label="Listening… — view the Speech-to-Markdown source on GitHub">
   <span class="mic-wrap"><span class="mic-circle"></span><span class="mic-pulse"></span><svg class="mic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
   <span class="lines">
     <span class="l1">Listening…</span><br>

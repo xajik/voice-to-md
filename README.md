@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="demo/icon.png" alt="Voice-to-Markdown icon" width="128"/>
+  <img src="demo/icon.png" alt="Speech-to-Markdown icon" width="128"/>
 </p>
 
-<h1 align="center">🎙️ Voice-to-Markdown</h1>
+<h1 align="center">🎙️ Speech-to-Markdown</h1>
 
 <p align="center"><b>Talk. Get clean markdown. 100% local. 🔗 <a href="https://voice-to-md.xajik0.workers.dev/">voice-to-md.dev</a></b></p>
 
-Voice-to-Markdown turns your voice into structured documents — and it ships as **two apps**:
+Speech-to-Markdown turns your voice into structured documents — and it ships as **two apps**:
 
 | | 🖥️ **Desktop — macOS** | 📱 **Mobile — iOS** |
 |---|---|---|
@@ -85,7 +85,7 @@ First launch: grant **Microphone** + **Accessibility** access, then download a W
 
 ### 🧠 Local LLM Setup (Agent Mode, macOS only)
 
-Agent Mode talks to any **OpenAI-compatible** server. Point VTMD at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
+Agent Mode talks to any **OpenAI-compatible** server. Point Speech-to-Markdown at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
 
 <img src="demo/settings.jpg" alt="Settings: local LLM endpoint, model picker, Whisper model" width="520"/>
 
@@ -93,7 +93,7 @@ Pick your server:
 
 #### omlx (Apple Silicon, MLX — fastest on Mac)
 
-Serve any MLX model on port 8000 — VTMD's default, zero config needed:
+Serve any MLX model on port 8000 — Speech-to-Markdown's default, zero config needed:
 
 ```bash
 brew install omlx
@@ -131,7 +131,7 @@ Base URL: `http://127.0.0.1:8080/v1`
 | **Qwen3.5 27B** (4-bit) | Best formatting quality; the default pick |
 | **Gemma 26B** (8-bit) | Fast, great instruction following |
 
-Anything that follows instructions well works — VTMD streams tokens as they arrive, so even bigger models *feel* instant.
+Anything that follows instructions well works — Speech-to-Markdown streams tokens as they arrive, so even bigger models *feel* instant.
 
 ---
 
@@ -151,7 +151,7 @@ Agent Mode on your phone — **everything runs offline, on the device**. No LLM 
   <img src="demo/appstore-ipad-13-editor.png" alt="iPad: editor" width="37%"/>
 </p>
 
-Building from source: `make build-ios` / `make test-ios` (see [Development](#%EF%B8%8F-development)). Running on a device needs a development team: `xcodebuild -scheme VoiceToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
+Building from source: `make build-ios` / `make test-ios` (see [Development](#%EF%B8%8F-development)). Running on a device needs a development team: `xcodebuild -scheme SpeechToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
 
 ---
 

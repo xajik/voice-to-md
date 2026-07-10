@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Voice-to-Markdown installer
+# Speech-to-Markdown installer
 #   curl -fsSL https://raw.githubusercontent.com/xajik/voice-to-md/main/install.sh | bash
 #
 # Bootstraps a source checkout and delegates the actual work (dependencies,
@@ -16,12 +16,12 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/xajik/voice-to-md.git"
-BUILD_DIR="${VTMD_BUILD_DIR:-$HOME/.vtmd/src}"
+BUILD_DIR="${STMD_BUILD_DIR:-$HOME/.stmd/src}"
 
 info()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 fail()  { printf '\033[1;31mError:\033[0m %s\n' "$*" >&2; exit 1; }
 
-[ "$(uname -s)" = "Darwin" ] || fail "Voice-to-Markdown is a macOS app; this installer only runs on macOS."
+[ "$(uname -s)" = "Darwin" ] || fail "Speech-to-Markdown is a macOS app; this installer only runs on macOS."
 
 command -v brew >/dev/null 2>&1 \
   || fail "Homebrew is required. Install it first: https://brew.sh"

@@ -34,6 +34,9 @@ final class BackendSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        #if os(macOS)
+        Self.migrateLegacyDefaultsIfNeeded(into: defaults)
+        #endif
         localAPIBaseURL = defaults.string(forKey: Keys.localAPIBaseURL) ?? BackendSettings.defaultBaseURL
         localModel = defaults.string(forKey: Keys.localModel) ?? ""
         whisperModel = defaults.string(forKey: Keys.whisperModel) ?? ""
@@ -47,7 +50,7 @@ final class BackendSettings: ObservableObject {
     }
 
     /// Explicit selection if downloaded, otherwise the first downloaded model by preference.
-    func resolvedWhisperModel(in fileManager: VTMDFileManager = .shared) -> ModelSize? {
+    func resolvedWhisperModel(in fileManager: STMDFileManager = .shared) -> ModelSize? {
         if let size = ModelSize(rawValue: whisperModel), fileManager.isModelDownloaded(size) {
             return size
         }
@@ -61,11 +64,37 @@ final class BackendSettings: ObservableObject {
     }
 
     private enum Keys {
-        static let localAPIBaseURL = "vtmd.localAPIBaseURL"
-        static let localModel = "vtmd.localModel"
-        static let whisperModel = "vtmd.whisperModel"
-        static let launchAtLogin = "vtmd.launchAtLogin"
-        static let fixTranscriptionWithLLM = "vtmd.fixTranscriptionWithLLM"
-        static let outputFormat = "vtmd.outputFormat"
+        static let localAPIBaseURL = "stmd.localAPIBaseURL"
+        static let localModel = "stmd.localModel"
+        static let whisperModel = "stmd.whisperModel"
+        static let launchAtLogin = "stmd.launchAtLogin"
+        static let fixTranscriptionWithLLM = "stmd.fixTranscriptionWithLLM"
+        static let outputFormat = "stmd.outputFormat"
+    }
+
+    /// One-time migration for pre-rebrand installs: the bundle-ID change gives
+    /// the app a fresh UserDefaults domain, so settings from the old
+    /// `com.vtmd.voicetomarkdown` domain would otherwise silently reset.
+    /// Guarded by `stmd.migrated` so it only runs once even if the legacy
+    /// domain never had these keys set.
+    private static func migrateLegacyDefaultsIfNeeded(into defaults: UserDefaults) {
+        let migratedFlagKey = "stmd.migrated"
+        guard !defaults.bool(forKey: migratedFlagKey) else { return }
+        defer { defaults.set(true, forKey: migratedFlagKey) }
+        guard let legacyDefaults = UserDefaults(suiteName: "com.vtmd.voicetomarkdown") else { return }
+
+        let keyPairs: [(legacy: String, new: String)] = [
+            ("vtmd.localAPIBaseURL", Keys.localAPIBaseURL),
+            ("vtmd.localModel", Keys.localModel),
+            ("vtmd.whisperModel", Keys.whisperModel),
+            ("vtmd.launchAtLogin", Keys.launchAtLogin),
+            ("vtmd.fixTranscriptionWithLLM", Keys.fixTranscriptionWithLLM),
+            ("vtmd.outputFormat", Keys.outputFormat)
+        ]
+        for pair in keyPairs {
+            guard defaults.object(forKey: pair.new) == nil,
+                  let value = legacyDefaults.object(forKey: pair.legacy) else { continue }
+            defaults.set(value, forKey: pair.new)
+        }
     }
 }
