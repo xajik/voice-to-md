@@ -43,7 +43,7 @@ struct SessionListView: View {
                     }
                 }
             }
-            .navigationTitle("Voice to MD")
+            .navigationTitle("Speech to MD")
             .safeAreaInset(edge: .bottom) {
                 Button {
                     Task {
@@ -126,9 +126,9 @@ struct SessionListView: View {
     private func availabilityMessage(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> String {
         switch reason {
         case .deviceNotEligible:
-            return "This device doesn't support Apple Intelligence, which Voice to MD needs to format documents."
+            return "This device doesn't support Apple Intelligence, which Speech to MD needs to format documents."
         case .appleIntelligenceNotEnabled:
-            return "Turn on Apple Intelligence in Settings to use Voice to MD."
+            return "Turn on Apple Intelligence in Settings to use Speech to MD."
         case .modelNotReady:
             return "The Apple Intelligence model is still downloading — try again shortly."
         @unknown default:
