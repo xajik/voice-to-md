@@ -114,13 +114,13 @@ final class AgentSessionController: ObservableObject {
         try await service.ensureAssets()
 
         service.onFinalResult = { [weak self] text in
-            Task { @MainActor in await self?.handleFinalTranscript(text) }
+            await self?.handleFinalTranscript(text)
         }
         service.onVolatileResult = { [weak self] text in
-            Task { @MainActor in self?.volatileText = text }
+            await self?.setVolatileText(text)
         }
         service.onSilence = { [weak self] in
-            Task { @MainActor in self?.launchFlush() }
+            Task { @MainActor in await self?.finalizeAndFlush() }
         }
         service.onError = { [weak self] error in
             Task { @MainActor in self?.error = error.localizedDescription }
@@ -169,6 +169,18 @@ final class AgentSessionController: ObservableObject {
     func flushNow() {
         guard session?.state == .recording, !isProcessing else { return }
         vtmdLog("SESSION", "Manual flush requested")
+        Task { await finalizeAndFlush() }
+    }
+
+    /// Short utterances (e.g. an edit instruction) sit as a volatile
+    /// hypothesis and never reach the buffer on their own — force them final,
+    /// then give the results stream a moment to deliver into the buffer.
+    /// `finalize(through:)` returns when the analyzer finalizes, but delivery
+    /// runs on the separate results task; flushing immediately could pull the
+    /// buffer before the text lands.
+    private func finalizeAndFlush() async {
+        await stt?.finalizeNow()
+        try? await Task.sleep(nanoseconds: 300_000_000)
         launchFlush()
     }
 
@@ -254,6 +266,10 @@ final class AgentSessionController: ObservableObject {
         }
     }
 
+    private func setVolatileText(_ text: String) {
+        volatileText = text
+    }
+
     // MARK: - LLM flush chain
 
     private func launchFlush(drainAll: Bool = false) {
@@ -277,7 +293,10 @@ final class AgentSessionController: ObservableObject {
     }
 
     private func sendBufferText(_ text: String) async {
-        guard !text.isEmpty, let sess = session else { return }
+        guard !text.isEmpty, let sess = session else {
+            if text.isEmpty { vtmdLog("SESSION", "Flush skipped: buffer empty") }
+            return
+        }
         isProcessing = true
         defer { isProcessing = false }
         // Mode, format and selection are read once per flush so a mid-stream

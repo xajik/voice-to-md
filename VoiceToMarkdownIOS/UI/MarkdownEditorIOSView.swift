@@ -19,12 +19,19 @@ struct MarkdownEditorIOSView: UIViewRepresentable {
         textView.smartQuotesType = .no
         textView.smartDashesType = .no
         textView.backgroundColor = .systemBackground
+        textView.keyboardDismissMode = .interactive
         textView.delegate = context.coordinator
         return textView
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
-        if textView.text != text, !context.coordinator.isEditing {
+        // Unlike the macOS editor, never gate on focus: on iOS the keyboard
+        // keeps the view "editing" indefinitely (edit mode's select-text
+        // gesture guarantees that state), which would freeze all streamed
+        // agent output. Typing loops are already prevented by the equality
+        // check — userDidEdit syncs the binding synchronously — so only IME
+        // composition needs deferring.
+        if textView.text != text, textView.markedTextRange == nil {
             let selectedRange = textView.selectedRange
             textView.text = text
             let length = (textView.text as NSString).length
@@ -41,23 +48,14 @@ struct MarkdownEditorIOSView: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         var onEdit: (String) -> Void
         var onSelectionChange: ((String?) -> Void)?
-        var isEditing = false
 
         init(onEdit: @escaping (String) -> Void, onSelectionChange: ((String?) -> Void)?) {
             self.onEdit = onEdit
             self.onSelectionChange = onSelectionChange
         }
 
-        func textViewDidBeginEditing(_ textView: UITextView) {
-            isEditing = true
-        }
-
         func textViewDidChange(_ textView: UITextView) {
             onEdit(textView.text)
-        }
-
-        func textViewDidEndEditing(_ textView: UITextView) {
-            isEditing = false
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {

@@ -10,8 +10,10 @@ import Speech
 /// `pause()`/`stop()` tear the pipeline down completely (finalizing trailing
 /// words on the way out); each `start()` builds a fresh analyzer.
 final class SpeechTranscriptionService {
-    var onFinalResult: ((String) -> Void)?
-    var onVolatileResult: ((String) -> Void)?
+    /// Awaited by the results loop so results are applied in order — a
+    /// finalized result is fully handled before the next one is read.
+    var onFinalResult: ((String) async -> Void)?
+    var onVolatileResult: ((String) async -> Void)?
     var onSilence: (() -> Void)?
     var onError: ((Error) -> Void)?
     /// Audio tap thread, ~12 Hz — forward of `AudioCaptureService.onLevel`.
@@ -101,9 +103,9 @@ final class SpeechTranscriptionService {
                     let text = String(result.text.characters)
                     guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
                     if result.isFinal {
-                        self?.onFinalResult?(text)
+                        await self?.onFinalResult?(text)
                     } else {
-                        self?.onVolatileResult?(text)
+                        await self?.onVolatileResult?(text)
                     }
                 }
             } catch {
@@ -113,6 +115,20 @@ final class SpeechTranscriptionService {
 
         try await analyzer.start(inputSequence: inputSequence)
         try audioService.start()
+    }
+
+    /// Forces any pending volatile hypothesis to become final right now,
+    /// without ending the session — recording keeps running afterward.
+    /// Used before a manual Send and after a silence timeout, since short
+    /// utterances otherwise sit as volatile text and never reach the
+    /// transcript buffer (only finalized results do).
+    func finalizeNow() async {
+        guard let analyzer else { return }
+        do {
+            try await analyzer.finalize(through: nil)
+        } catch {
+            vtmdLog("STT", "finalize(through:) failed: \(error.localizedDescription)")
+        }
     }
 
     /// Stops capture and finalizes pending audio so trailing words still
