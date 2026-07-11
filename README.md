@@ -146,8 +146,8 @@ Agent Mode on your phone — **everything runs offline, on the device**. No LLM 
 - Same three modes (**Format / Edit / Append**), same **MD / TXT / HTML** output formats, sessions restorable from history, documents visible in the Files app.
 
 <p align="center">
-  <img src="demo/appstore-iphone-6.9-sessions.png" alt="iOS: session history" width="30%"/>
-  <img src="demo/appstore-iphone-6.9-editor.png" alt="iOS: live markdown editor with agent control bar" width="30%"/>
+  <img src="demo/appstore-iphone-6.7-sessions.png" alt="iOS: session history" width="30%"/>
+  <img src="demo/appstore-iphone-6.7-editor.png" alt="iOS: live markdown editor with agent control bar" width="30%"/>
   <img src="demo/appstore-ipad-13-editor.png" alt="iPad: editor" width="37%"/>
 </p>
 

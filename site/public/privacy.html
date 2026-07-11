@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Speech-to-Markdown</title>
+<meta name="description" content="Speech-to-Markdown collects no data. Speech-to-text and formatting run entirely on-device — nothing is sent to us, because there is no server to send it to.">
+<link rel="canonical" href="https://voice-to-md.xajik0.workers.dev/privacy">
+<link rel="icon" type="image/png" href="/assets/icon.png">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e0e12">
+<style>
+:root {
+  --grad-a-lite: #7c9cff;
+  --grad-b-lite: #b07aff;
+  --bg: #0e0e12;
+  --card: #1b1b20;
+  --ink: #f5f5f7;
+  --ink-2: #a1a1a6;
+  --hairline: rgba(255, 255, 255, 0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 64px 24px 100px; }
+a { color: var(--grad-a-lite); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header { margin-bottom: 40px; }
+header a.back { font-size: 14px; color: var(--ink-2); }
+h1 {
+  font-size: clamp(30px, 5vw, 40px);
+  letter-spacing: -0.02em;
+  margin: 14px 0 6px;
+  background: linear-gradient(120deg, var(--grad-a-lite), var(--grad-b-lite));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.updated { color: var(--ink-2); font-size: 14px; }
+h2 { font-size: 20px; margin: 34px 0 10px; letter-spacing: -0.01em; }
+p, li { color: var(--ink-2); font-size: 16px; }
+ul { padding-left: 22px; margin-top: 8px; }
+li { margin-bottom: 6px; }
+strong { color: var(--ink); }
+.card {
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 18px 20px; margin-top: 28px;
+}
+.card p { color: var(--ink); font-size: 15px; }
+footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--hairline); color: var(--ink-2); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="/">← Speech-to-Markdown</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Effective July 11, 2026</p>
+  </header>
+
+  <div class="card">
+    <p><strong>The short version:</strong> Speech-to-Markdown collects nothing. There is no account, no analytics, no server we operate, and no data sent to us — because the app has no backend to send it to. Speech-to-text and document formatting run entirely on your Mac or your iPhone/iPad.</p>
+  </div>
+
+  <h2>What this app does with your voice and text</h2>
+  <p>Audio you record is transcribed and your documents are formatted <strong>on-device</strong>:</p>
+  <ul>
+    <li><strong>macOS:</strong> transcription runs locally via whisper.cpp; formatting is handled by an OpenAI-compatible LLM server that you install and run yourself on your own Mac (e.g. omlx, Ollama, LM Studio, llama.cpp). By default this server listens on <code>127.0.0.1</code> — your own machine — so nothing leaves the device. If you deliberately point the app at a remote server you control, your transcript is sent only to that address; we have no visibility into it and never see it.</li>
+    <li><strong>iOS / iPadOS:</strong> transcription uses Apple's on-device SpeechAnalyzer and formatting uses Apple's on-device Foundation Models. The app works fully offline, including in airplane mode.</li>
+  </ul>
+
+  <h2>What we collect</h2>
+  <p>Nothing. Speech-to-Markdown has no analytics SDKs, no crash reporters, no advertising identifiers, no third-party trackers, and no user accounts or sign-in.</p>
+
+  <h2>Where your data lives</h2>
+  <p>Recordings, transcripts, and documents are stored only in local files on your own device — under <code>~/.stmd</code> on macOS, and in the app's sandboxed container (visible in the Files app) on iOS. Nothing is synced to any server we run.</p>
+
+  <h2>Permissions the app requests</h2>
+  <ul>
+    <li><strong>Microphone</strong> — required to record what you say.</li>
+    <li><strong>Accessibility</strong> (macOS only) — required so Global Dictation can type the transcribed text at your cursor in whatever app has focus.</li>
+    <li><strong>Speech Recognition</strong> (iOS only) — required to use Apple's on-device SpeechAnalyzer.</li>
+  </ul>
+  <p>None of these permissions are used to collect or transmit data anywhere; they exist solely to let the app function locally.</p>
+
+  <h2>Children's privacy</h2>
+  <p>Speech-to-Markdown does not knowingly collect information from anyone, including children under 13 — it does not collect information from anyone at all.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy ever changes, the updated version will be posted on this page with a new effective date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: open an issue on <a href="https://github.com/xajik/voice-to-md/issues">GitHub</a> or email <a href="mailto:xajik0@gmail.com">xajik0@gmail.com</a>.</p>
+
+  <footer>
+    <a href="/">Speech-to-Markdown</a> · <a href="/support">Support</a> · <a href="https://github.com/xajik/voice-to-md">Source on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>

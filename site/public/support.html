@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Speech-to-Markdown</title>
+<meta name="description" content="Get help with Speech-to-Markdown: common issues, troubleshooting, and how to reach the developer.">
+<link rel="canonical" href="https://voice-to-md.xajik0.workers.dev/support">
+<link rel="icon" type="image/png" href="/assets/icon.png">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e0e12">
+<style>
+:root {
+  --grad-a: rgb(77, 115, 250);
+  --grad-b: rgb(140, 64, 230);
+  --grad-a-lite: #7c9cff;
+  --grad-b-lite: #b07aff;
+  --bg: #0e0e12;
+  --card: #1b1b20;
+  --ink: #f5f5f7;
+  --ink-2: #a1a1a6;
+  --hairline: rgba(255, 255, 255, 0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 64px 24px 100px; }
+a { color: var(--grad-a-lite); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header { margin-bottom: 40px; }
+header a.back { font-size: 14px; color: var(--ink-2); }
+h1 {
+  font-size: clamp(30px, 5vw, 40px);
+  letter-spacing: -0.02em;
+  margin: 14px 0 6px;
+  background: linear-gradient(120deg, var(--grad-a-lite), var(--grad-b-lite));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.sub { color: var(--ink-2); font-size: 16px; max-width: 560px; }
+h2 { font-size: 20px; margin: 34px 0 10px; letter-spacing: -0.01em; }
+p, li { color: var(--ink-2); font-size: 16px; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 5px; }
+.faq { display: grid; gap: 14px; margin-top: 14px; }
+.faq .card {
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 14px;
+  padding: 16px 18px;
+}
+.faq .card h3 { font-size: 15.5px; color: var(--ink); margin-bottom: 4px; }
+.faq .card p { font-size: 14.5px; margin: 0; }
+.cta-row { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 20px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.btn:hover { text-decoration: none; filter: brightness(1.1); }
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(120deg, var(--grad-a), var(--grad-b));
+  box-shadow: 0 6px 20px rgba(89, 90, 240, 0.45);
+}
+.btn-ghost { color: var(--ink); background: var(--card); border: 1px solid var(--hairline); }
+footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--hairline); color: var(--ink-2); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="/">← Speech-to-Markdown</a>
+    <h1>Support</h1>
+    <p class="sub">Speech-to-Markdown is a free, local-only app for macOS, iPhone, and iPad. If something isn't working, here's where to look and how to reach the developer directly.</p>
+  </header>
+
+  <h2>Common issues</h2>
+  <div class="faq">
+    <div class="card">
+      <h3>Recording does nothing / no transcript appears</h3>
+      <p>Check that Speech-to-Markdown has <strong>Microphone</strong> access in System Settings → Privacy &amp; Security (macOS) or Settings → Speech-to-Markdown (iOS).</p>
+    </div>
+    <div class="card">
+      <h3>macOS: Global Dictation types nothing at the cursor</h3>
+      <p>Grant <strong>Accessibility</strong> access in System Settings → Privacy &amp; Security → Accessibility, then restart the app — macOS only re-checks this permission on launch.</p>
+    </div>
+    <div class="card">
+      <h3>macOS: Agent Mode says it can't reach the LLM</h3>
+      <p>Agent Mode needs a local OpenAI-compatible server running (omlx, Ollama, LM Studio, or llama.cpp). Confirm the base URL in <strong>Settings…</strong> matches the port your server is listening on (default <code>http://127.0.0.1:8000/v1</code>).</p>
+    </div>
+    <div class="card">
+      <h3>macOS: no Whisper model downloaded</h3>
+      <p>Open <strong>Settings…</strong> from the menu bar and download a Whisper model — <em>Base</em> is a good starting point.</p>
+    </div>
+    <div class="card">
+      <h3>iOS: app shows an Apple Intelligence banner</h3>
+      <p>The iOS app requires an Apple Intelligence–capable device (iPhone 15 Pro or newer, or an Apple-Silicon iPad) on iOS 26+, with Apple Intelligence turned on in Settings.</p>
+    </div>
+  </div>
+
+  <h2>Still stuck?</h2>
+  <p>Open an issue with details on your macOS/iOS version, device, and what you expected to happen — that's the fastest way to get a fix.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/xajik/voice-to-md/issues">Open a GitHub Issue</a>
+    <a class="btn btn-ghost" href="mailto:xajik0@gmail.com">Email xajik0@gmail.com</a>
+  </div>
+
+  <footer>
+    <a href="/">Speech-to-Markdown</a> · <a href="/privacy">Privacy Policy</a> · <a href="https://github.com/xajik/voice-to-md">Source on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>
