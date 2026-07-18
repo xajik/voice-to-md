@@ -210,6 +210,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return toolbar
     }
 
+    @objc private func newSessionTapped(_ sender: NSButton) {
+        hudVM?.newSession()
+    }
+
     @objc private func toggleHistoryPopover(_ sender: NSButton) {
         if let popover = historyPopover, popover.isShown {
             popover.performClose(sender)
@@ -293,29 +297,45 @@ extension AppDelegate: NSToolbarDelegate {
         itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
-        guard itemIdentifier == .sessionHistory else { return nil }
-        let icon = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Recent Sessions")
-        let button = NSButton(image: icon ?? NSImage(), target: self, action: #selector(toggleHistoryPopover(_:)))
-        button.bezelStyle = .texturedRounded
-        button.isBordered = false
-        button.toolTip = "Recent sessions"
+        switch itemIdentifier {
+        case .newSession:
+            let icon = NSImage(systemSymbolName: "square.and.pencil", accessibilityDescription: "New Session")
+            let button = NSButton(image: icon ?? NSImage(), target: self, action: #selector(newSessionTapped(_:)))
+            button.bezelStyle = .texturedRounded
+            button.isBordered = false
+            button.toolTip = "New session"
 
-        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.view = button
-        item.label = "History"
-        return item
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.view = button
+            item.label = "New"
+            return item
+        case .sessionHistory:
+            let icon = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Recent Sessions")
+            let button = NSButton(image: icon ?? NSImage(), target: self, action: #selector(toggleHistoryPopover(_:)))
+            button.bezelStyle = .texturedRounded
+            button.isBordered = false
+            button.toolTip = "Recent sessions"
+
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.view = button
+            item.label = "History"
+            return item
+        default:
+            return nil
+        }
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.flexibleSpace, .sessionHistory]
+        [.flexibleSpace, .newSession, .sessionHistory]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.sessionHistory, .flexibleSpace]
+        [.newSession, .sessionHistory, .flexibleSpace]
     }
 }
 
 private extension NSToolbarItem.Identifier {
+    static let newSession = NSToolbarItem.Identifier("newSession")
     static let sessionHistory = NSToolbarItem.Identifier("sessionHistory")
 }
 

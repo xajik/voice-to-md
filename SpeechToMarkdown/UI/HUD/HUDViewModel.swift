@@ -12,6 +12,12 @@ final class HUDViewModel: ObservableObject {
         if coordinator.isProcessing { return .processing }
         return coordinator.session?.state ?? .idle
     }
+    /// Raw recording state, ignoring in-flight LLM processing. Recording and
+    /// processing run in parallel, so the mic control keys off this while the
+    /// status label shows `sessionState`.
+    var recordingState: SessionState {
+        coordinator.session?.state ?? .idle
+    }
     var transcript: String { coordinator.transcript }
     var errorMessage: String? { coordinator.error }
     var mode: AgentMode {
@@ -27,6 +33,13 @@ final class HUDViewModel: ObservableObject {
     }
     var canPreview: Bool {
         coordinator.session != nil
+    }
+    var isSpeaking: Bool { coordinator.isSpeaking }
+    var canSpeak: Bool {
+        SpeechSynthesisService.textToSpeak(
+            selection: coordinator.editorSelection,
+            document: coordinator.markdown
+        ) != nil
     }
 
     init(coordinator: SessionCoordinator) {
@@ -46,6 +59,16 @@ final class HUDViewModel: ObservableObject {
         }
         Task {
             await coordinator.startSession(modelSize: size)
+        }
+    }
+
+    func newSession() {
+        guard let size = BackendSettings.shared.resolvedWhisperModel() else {
+            coordinator.error = "No Whisper model downloaded. Pick one in Settings."
+            return
+        }
+        Task {
+            await coordinator.startNewSession(modelSize: size)
         }
     }
 
@@ -71,6 +94,10 @@ final class HUDViewModel: ObservableObject {
 
     func openPreview() {
         coordinator.openPreview()
+    }
+
+    func toggleSpeech() {
+        coordinator.toggleSpeech()
     }
 
     func refreshSessions() {

@@ -20,6 +20,7 @@ struct HUDBubbleView: View {
                 .frame(height: 20)
                 .padding(.horizontal, 4)
             previewButton
+            voiceButton
             Divider()
                 .frame(height: 20)
                 .padding(.horizontal, 4)
@@ -89,8 +90,11 @@ struct HUDBubbleView: View {
         .help("Clear session")
     }
 
+    // The mic reflects the raw recording state, not the processing overlay:
+    // recording continues while the LLM formats, so pause/resume must stay
+    // available. The status label still shows "Processing" via sessionState.
     private var micHelp: String {
-        switch viewModel.sessionState {
+        switch viewModel.recordingState {
         case .idle: return "Start"
         case .recording: return "Pause"
         case .paused: return "Resume"
@@ -99,18 +103,16 @@ struct HUDBubbleView: View {
     }
 
     private var micIconName: String {
-        switch viewModel.sessionState {
+        switch viewModel.recordingState {
         case .recording: return "mic.fill"
-        case .processing: return "waveform"
         case .paused: return "mic.slash.fill"
         default: return "mic"
         }
     }
 
     private var micColor: Color {
-        switch viewModel.sessionState {
+        switch viewModel.recordingState {
         case .recording: return .red
-        case .processing: return .orange
         case .initializing: return .yellow
         default: return .secondary
         }
@@ -172,6 +174,23 @@ struct HUDBubbleView: View {
         .help("Preview in default app")
     }
 
+    private var voiceButton: some View {
+        Button(action: { viewModel.toggleSpeech() }) {
+            Image(systemName: viewModel.isSpeaking ? "speaker.wave.2.fill" : "speaker.wave.2")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(voiceColor)
+                .frame(width: 22, height: 22)
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.canSpeak)
+        .help(viewModel.isSpeaking ? "Stop reading" : "Read aloud (selection or document)")
+    }
+
+    private var voiceColor: Color {
+        if viewModel.isSpeaking { return .accentColor }
+        return viewModel.canSpeak ? Color.secondary : Color.secondary.opacity(0.4)
+    }
+
     private func modeButton(_ mode: AgentMode) -> some View {
         let isActive = viewModel.mode == mode
         return Button {
@@ -191,7 +210,7 @@ struct HUDBubbleView: View {
     }
 
     private func handleMicTap() {
-        switch viewModel.sessionState {
+        switch viewModel.recordingState {
         case .idle:
             viewModel.startSession()
         case .paused:

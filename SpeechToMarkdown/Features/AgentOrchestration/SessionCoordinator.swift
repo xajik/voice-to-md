@@ -24,6 +24,7 @@ final class SessionCoordinator: ObservableObject {
     /// Latest editor selection, read at flush time in edit mode. Not @Published —
     /// no UI reads it and it changes on every caret move.
     var editorSelection: String?
+    @Published private(set) var isSpeaking = false
 
     private let fileManager = STMDFileManager.shared
     private let backendSettings = BackendSettings.shared
@@ -33,6 +34,11 @@ final class SessionCoordinator: ObservableObject {
     private var audioService: AudioCaptureService?
     private var whisper: WhisperService?
     private var fileWatcher: FileWatcher?
+    private lazy var speechService: SpeechSynthesisService = {
+        let service = SpeechSynthesisService()
+        service.onFinish = { [weak self] in self?.isSpeaking = false }
+        return service
+    }()
 
     // Audio accumulation: whisper-cli reloads the model on every invocation,
     // so tap buffers (~85 ms each) are batched into multi-second chunks and
@@ -119,6 +125,16 @@ final class SessionCoordinator: ObservableObject {
         }
     }
 
+    /// Abandons the current session (if any) and starts a fresh one with a new
+    /// id/dirPath. Non-destructive: stopSession() flushes pending audio/text
+    /// before tearing down, so the old session's files remain intact on disk.
+    func startNewSession(modelSize: ModelSize) async {
+        if session != nil {
+            await stopSession()
+        }
+        await startSession(modelSize: modelSize)
+    }
+
     /// Shared by `startSession`/`restoreSession`: resolves the LLM + wires
     /// whisper and audio capture. Assigns `llmService`/`llmModel`/`whisper`/
     /// `audioService`; throws before any assignment happens on failure.
@@ -137,6 +153,7 @@ final class SessionCoordinator: ObservableObject {
 
     private func beginRecording() async {
         guard session != nil else { return }
+        stopSpeech()
         guard await AudioCaptureService.requestPermission() else {
             stmdLog("SESSION", "Microphone permission denied")
             error = "Microphone access denied. Enable it in System Settings → Privacy & Security → Microphone."
@@ -174,6 +191,7 @@ final class SessionCoordinator: ObservableObject {
 
     func stopSession() async {
         stmdLog("SESSION", "Stopping session")
+        stopSpeech()
         audioService?.stop()
 
         // Transcribe any captured audio, then force flush remaining text
@@ -198,6 +216,7 @@ final class SessionCoordinator: ObservableObject {
 
     func resetSession() async {
         stmdLog("SESSION", "Resetting session")
+        stopSpeech()
         audioService?.stop()
 
         transcriptionTask?.cancel()
@@ -222,6 +241,29 @@ final class SessionCoordinator: ObservableObject {
 
         session?.state = .paused
         stmdLog("SESSION", "Session reset complete")
+    }
+
+    /// Reads the editor selection (or the whole document) aloud via native TTS.
+    /// Speech and the mic are mutually exclusive: starting speech pauses an
+    /// active recording, and the session stays paused when speech ends.
+    func toggleSpeech() {
+        if isSpeaking {
+            speechService.stop()
+            return
+        }
+        guard let text = SpeechSynthesisService.textToSpeak(selection: editorSelection, document: markdown) else { return }
+        if session?.state == .recording {
+            pauseRecording()
+        }
+        isSpeaking = true
+        speechService.speak(text)
+        stmdLog("SESSION", "Reading aloud (\(text.count) chars)")
+    }
+
+    private func stopSpeech() {
+        guard isSpeaking else { return }
+        speechService.stop()
+        isSpeaking = false
     }
 
     /// Opens the session document in the default app for its type
