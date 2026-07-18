@@ -73,6 +73,7 @@ body {
 a { color: var(--grad-a-lite); text-decoration: none; }
 a:hover { text-decoration: underline; }
 h2 { font-size: 32px; letter-spacing: -0.02em; margin-bottom: 8px; }
+h3.sub-heading { font-size: 21px; letter-spacing: -0.01em; margin: 38px 0 6px; }
 .kicker { color: var(--ink-2); font-size: 17px; max-width: 680px; }
 section { padding: 36px 0; }
 code { font-family: var(--mono); font-size: 0.92em; background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 5px; }
@@ -147,6 +148,8 @@ pre code { background: none; padding: 0; }
   margin-right: 44px; /* balance the traffic lights */
 }
 .titlebar .title.left { text-align: left; margin-right: 0; margin-left: 10px; }
+.toolbar-icons { display: flex; align-items: center; gap: 14px; flex: none; padding-right: 4px; }
+.toolbar-icons svg { width: 13px; height: 13px; fill: var(--ink-2); }
 
 /* ---------- agent-mode demo window ---------- */
 .demo-stage { padding: 12px 0 42px; }
@@ -186,8 +189,7 @@ pre code { background: none; padding: 0; }
 .raw-pane .filler { color: var(--ink-3); font-style: italic; }
 /* HUD control-panel replica, bottom-right of the window — like the real app:
    send · mic · status · | · Format / Edit / Append · MD · | · preview */
-.hud-bubble {
-  position: absolute; right: 22px; bottom: 108px;
+.hud-bubble, .hud-bubble-static {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 12px 6px 10px;
   background: rgba(44, 44, 48, 0.88);
@@ -196,9 +198,11 @@ pre code { background: none; padding: 0; }
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   font-size: 11.5px; font-weight: 600;
 }
-.hud-bubble .state { min-width: 74px; }
-.hud-bubble .hud-send { width: 15px; height: 15px; fill: var(--grad-a-lite); flex: none; }
-.hud-bubble .hud-sep { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.16); flex: none; }
+.hud-bubble { position: absolute; right: 22px; bottom: 108px; }
+.hud-bubble-static { width: fit-content; max-width: 100%; margin: 26px auto 0; flex-wrap: wrap; }
+.hud-bubble .state, .hud-bubble-static .state { min-width: 74px; }
+.hud-bubble .hud-send, .hud-bubble-static .hud-send { width: 15px; height: 15px; fill: var(--grad-a-lite); flex: none; }
+.hud-bubble .hud-sep, .hud-bubble-static .hud-sep { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.16); flex: none; }
 .hud-mode {
   width: 22px; height: 22px; border-radius: 6px;
   display: grid; place-items: center; flex: none;
@@ -424,14 +428,6 @@ pre code { background: none; padding: 0; }
 .settings-mock .sep { height: 1px; background: var(--hairline); margin: 8px 0; }
 
 /* ---------- agent-mode control panel ---------- */
-.panel-shot {
-  display: block;
-  width: min(420px, 100%);
-  margin: 26px auto 0;
-  border-radius: 16px;
-  border: 1px solid var(--hairline);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-}
 .panel-caption { text-align: center; color: var(--ink-2); font-size: 14px; margin-top: 14px; }
 .flow-steps { margin-top: 30px; display: grid; gap: 8px; color: var(--ink-2); font-size: 15px; list-style: none; counter-reset: step; }
 .flow-steps li { counter-increment: step; }
@@ -573,7 +569,11 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <div class="mac-window" id="demo-window">
       <div class="titlebar">
         <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
-        <span class="title">Speech to Markdown</span>
+        <span class="title left">Speech to Markdown</span>
+        <span class="toolbar-icons" aria-hidden="true">
+          <span title="New Session"><svg viewBox="0 0 24 24"><path d="M4 4h11v2H6v12h12v-9h2v11H4V4zm14.7-1.3l2.6 2.6-9.6 9.6H9v-2.6l9.7-9.6z"/></svg></span>
+          <span title="Session History"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8z"/></svg></span>
+        </span>
       </div>
       <div class="editor" id="md-out" aria-live="off"></div>
       <div class="hud-bubble" aria-hidden="true">
@@ -587,6 +587,9 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
         <span class="hud-format" title="Output format">MD</span>
         <span class="hud-sep"></span>
         <span class="hud-mode" title="Preview"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
+        <span class="hud-mode" title="Read aloud"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.26 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></span>
+        <span class="hud-sep"></span>
+        <span class="hud-mode" title="Clear session"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span>
       </div>
       <div class="raw-bar"><span aria-hidden="true">⌃</span> Raw input <span class="count" id="raw-count"></span></div>
       <div class="raw-pane" id="raw-out"></div>
@@ -681,8 +684,22 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
     <h2>🎛️ Agent Mode control panel</h2>
     <p class="kicker">One floating, draggable capsule drives the whole session — and decides <em>how</em> your voice lands in the document.</p>
 
-    <img class="panel-shot" src="/assets/agent-mode-control-panel.jpg" alt="Agent Mode control panel: send button, mic, Recording status, and the Format / Edit / Append mode switcher" width="510" height="152" loading="lazy">
-    <p class="panel-caption">Send · mic · status · Format / Edit / Append · output format · preview · clear.</p>
+    <div class="hud-bubble-static" role="img" aria-label="Agent Mode control panel: send, mic, status, Format Edit Append mode switcher, output format, preview, read aloud, and clear session controls">
+      <svg class="hud-send" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      <span class="mic-wrap"><span class="mic-pulse"></span><svg class="mic-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></span>
+      <span class="state">Recording</span>
+      <span class="hud-sep"></span>
+      <span class="hud-mode active" title="Format"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></span>
+      <span class="hud-mode" title="Edit"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span>
+      <span class="hud-mode" title="Append"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z"/></svg></span>
+      <span class="hud-format" title="Output format">MD</span>
+      <span class="hud-sep"></span>
+      <span class="hud-mode" title="Preview"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></span>
+      <span class="hud-mode" title="Read aloud"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.26 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></span>
+      <span class="hud-sep"></span>
+      <span class="hud-mode" title="Clear session"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span>
+    </div>
+    <p class="panel-caption">Send · mic · status · Format / Edit / Append · output format · preview · read aloud · clear.</p>
 
     <div class="servers">
       <article class="server">
@@ -713,6 +730,14 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
         <h4>👁️ Preview</h4>
         <p class="note">Opens the session document in the default app for its type — the browser for HTML, your editor for markdown or plain text.</p>
       </article>
+      <article class="server">
+        <h4>🔊 Read aloud</h4>
+        <p class="note">Sends your current selection — or the whole document if nothing's selected — to macOS's built-in text-to-speech. Tap again to stop mid-sentence.</p>
+      </article>
+      <article class="server">
+        <h4>🗑️ Clear session</h4>
+        <p class="note">Wipes the recorded audio, transcript, and markdown for the current session after a confirmation prompt, leaving you with a blank document.</p>
+      </article>
     </div>
 
     <ol class="flow-steps" aria-label="How a flush works">
@@ -721,6 +746,31 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       <li><strong>The mode and output format pick the prompt.</strong> Format rewrites the whole document, Edit applies your instruction (to the selection, if any), Append formats only what's new — in Markdown, plain text, or HTML.</li>
       <li><strong>Tokens stream straight into the editor</strong> — and the document on disk (<code>.md</code> / <code>.txt</code> / <code>.html</code>) is updated after every flush.</li>
     </ol>
+
+    <h3 class="sub-heading">🪟 Window toolbar</h3>
+    <p class="kicker">Two buttons live in the Agent Mode window's own title bar, separate from the floating capsule — for starting fresh and getting back to where you left off.</p>
+
+    <div class="mac-window" style="max-width: 420px; margin: 22px auto 0;" role="img" aria-label="Agent Mode window title bar with New Session and Session History buttons">
+      <div class="titlebar">
+        <div class="lights" aria-hidden="true"><span class="light r"></span><span class="light y"></span><span class="light g"></span></div>
+        <span class="title left">Speech to Markdown</span>
+        <span class="toolbar-icons" aria-hidden="true">
+          <span title="New Session"><svg viewBox="0 0 24 24"><path d="M4 4h11v2H6v12h12v-9h2v11H4V4zm14.7-1.3l2.6 2.6-9.6 9.6H9v-2.6l9.7-9.6z"/></svg></span>
+          <span title="Session History"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6a7 7 0 1 1 2.05 4.95l-1.42 1.42A9 9 0 1 0 13 3zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8z"/></svg></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="servers">
+      <article class="server">
+        <h4>📝 New Session</h4>
+        <p class="note">Starts a brand-new session without closing the window. Whatever you were working on is already saved to disk — this just clears the editor for a fresh document.</p>
+      </article>
+      <article class="server">
+        <h4>🕘 Session History</h4>
+        <p class="note">Lists recent sessions by date with a short preview and their output format. Click one to <strong>restore</strong> it and keep recording straight into the same files.</p>
+      </article>
+    </div>
   </div>
 </section>
 

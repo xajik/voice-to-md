@@ -107,4 +107,20 @@ final class HUDViewModel: ObservableObject {
     func restoreSession(_ listing: SessionListing) {
         Task { await coordinator.restoreSession(listing) }
     }
+
+    func deleteSession(_ listing: SessionListing) {
+        Task {
+            // Deleting the active session's files out from under in-flight
+            // writes would corrupt it — stop it first.
+            if coordinator.session?.id == listing.id {
+                await coordinator.stopSession()
+            }
+            do {
+                try STMDFileManager.shared.deleteSession(listing)
+            } catch {
+                coordinator.error = "Failed to delete session: \(error.localizedDescription)"
+            }
+            refreshSessions()
+        }
+    }
 }

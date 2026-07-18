@@ -161,6 +161,20 @@ final class STMDFileManagerTests: XCTestCase {
         XCTAssertTrue(sessions.first?.dirPath.path.hasSuffix("/1000") ?? false)
     }
 
+    // MARK: - deleteSession
+
+    func testDeleteSessionRemovesDirectoryAndKeepsOthers() throws {
+        makeSessionDir(id: "1000")
+        makeSessionDir(id: "2000")
+        let sessions = STMDFileManager.listSessions(in: tmpDir)
+        let victim = try XCTUnwrap(sessions.first { $0.id == "1000" })
+
+        try fm.deleteSession(victim)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: victim.dirPath.path))
+        XCTAssertEqual(STMDFileManager.listSessions(in: tmpDir).map(\.id), ["2000"])
+    }
+
     // MARK: - migrateLegacyData
 
     func testMigrateLegacyDataMovesRootAndRenamesSessionsDir() throws {
