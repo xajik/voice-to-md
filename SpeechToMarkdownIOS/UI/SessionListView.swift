@@ -32,7 +32,7 @@ struct SessionListView: View {
                     }
                 }
 
-                Section("Recent Sessions") {
+                Section {
                     if sessions.isEmpty {
                         Text("No sessions yet")
                             .foregroundStyle(.secondary)
@@ -48,6 +48,10 @@ struct SessionListView: View {
                                 }
                         }
                     }
+                } header: {
+                    Text("Recent Sessions")
+                } footer: {
+                    Text("Speech to MD uses Apple Intelligence and on-device Speech recognition. Your voice and documents never leave this device — no third-party AI service is used.")
                 }
             }
             .navigationTitle("Speech to MD")

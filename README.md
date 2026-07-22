@@ -12,7 +12,7 @@ Speech-to-Markdown turns your voice into structured documents — and it ships a
 |---|---|---|
 | Platform | macOS 13+ (menu-bar app) | **iOS 26+**, **iPhone 15 Pro or newer** (Apple Intelligence required; Apple-Silicon iPads too) |
 | Speech-to-text | [whisper.cpp](https://github.com/ggerganov/whisper.cpp) | Apple SpeechAnalyzer (on-device) |
-| LLM | any local OpenAI-compatible server (omlx, Ollama, LM Studio, llama.cpp) | Apple Foundation Models (on-device) |
+| LLM | any local server speaking the OpenAI API format (omlx, Ollama, LM Studio, llama.cpp) — not a connection to OpenAI | Apple Intelligence / Foundation Models (on-device) |
 | Dependencies | `whisper-cpp`, `ffmpeg`, a local LLM server | **none** — zero setup |
 | Network | 100% local — nothing leaves your Mac | **100% offline** — nothing leaves your phone |
 
@@ -85,7 +85,7 @@ First launch: grant **Microphone** + **Accessibility** access, then download a W
 
 ### 🧠 Local LLM Setup (Agent Mode, macOS only)
 
-Agent Mode talks to any **OpenAI-compatible** server. Point Speech-to-Markdown at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
+Agent Mode talks to any local server that speaks the **OpenAI API format** — this is just a common request/response shape, not a connection to OpenAI the company; nothing is ever sent to OpenAI. Point Speech-to-Markdown at it in **Settings…** (default: `http://127.0.0.1:8000/v1`, model auto-picked). The Whisper STT model is picked there too:
 
 <img src="demo/settings.jpg" alt="Settings: local LLM endpoint, model picker, Whisper model" width="520"/>
 

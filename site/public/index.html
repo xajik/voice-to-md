@@ -777,7 +777,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
 <section id="dependencies">
   <div class="wrap">
     <h2>🧠 Desktop dependencies &amp; local LLM <small>(macOS only)</small></h2>
-    <p class="kicker"><strong>Mac app only — the iOS app needs none of this.</strong> Global Dictation only needs whisper.cpp — installed for you. Agent Mode talks to any <strong>OpenAI-compatible</strong> server running on your Mac (default <code>http://127.0.0.1:8000/v1</code>). Pick one:</p>
+    <p class="kicker"><strong>Mac app only — the iOS app needs none of this.</strong> Global Dictation only needs whisper.cpp — installed for you. Agent Mode talks to a local LLM server running on your Mac (default <code>http://127.0.0.1:8000/v1</code>) that speaks the <strong>OpenAI request format</strong> — that's an API shape many local-LLM tools share, not a connection to OpenAI the company; nothing is sent to OpenAI. Pick one:</p>
 
     <div class="dep-block">
       <pre><code>brew install xcodegen whisper-cpp ffmpeg   # build dependencies (install.sh does this)</code></pre>
@@ -821,7 +821,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
       </div>
       <div class="body">
         <h3>Local LLM</h3>
-        <p class="cap">OpenAI-compatible API (omlx, llama.cpp, LM Studio…)</p>
+        <p class="cap">Speaks the OpenAI API format (omlx, llama.cpp, LM Studio…) — not OpenAI itself</p>
         <div class="row">
           <span class="field">http://127.0.0.1:8000/v1</span>
           <span class="push-btn">Refresh</span>
@@ -853,7 +853,7 @@ footer .lock { font-size: 16px; font-weight: 600; color: var(--ink); margin-bott
 <section id="ios">
   <div class="wrap">
     <h2>📱 Now on iPhone &amp; iPad</h2>
-    <p class="kicker"><strong>iOS 26+ · iPhone 15 Pro or newer</strong> (Apple Intelligence required) · <strong>100% offline</strong>. The same Agent Mode with zero dependencies: SpeechAnalyzer transcribes on-device, Apple Foundation Models format the document. No LLM server, no whisper install, no settings — none of the desktop setup below applies. Works in airplane mode.</p>
+    <p class="kicker"><strong>iOS 26+ · iPhone 15 Pro or newer</strong> (Apple Intelligence required) · <strong>100% offline</strong>. The same Agent Mode with zero dependencies: SpeechAnalyzer transcribes on-device, Apple Intelligence (Foundation Models) formats the document. <strong>No third-party AI service is used</strong> — no LLM server, no whisper install, no settings, no network request of any kind. Works in airplane mode.</p>
 
     <div class="ios-phones">
 

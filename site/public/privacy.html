@@ -62,18 +62,25 @@ footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--hairli
   <header>
     <a class="back" href="/">← Speech-to-Markdown</a>
     <h1>Privacy Policy</h1>
-    <p class="updated">Effective July 11, 2026</p>
+    <p class="updated">Effective July 22, 2026</p>
   </header>
 
   <div class="card">
-    <p><strong>The short version:</strong> Speech-to-Markdown collects nothing. There is no account, no analytics, no server we operate, and no data sent to us — because the app has no backend to send it to. Speech-to-text and document formatting run entirely on your Mac or your iPhone/iPad.</p>
+    <p><strong>The short version:</strong> Speech-to-Markdown collects nothing. There is no account, no analytics, no server we operate, and no data sent to us — because the app has no backend to send it to. Speech-to-text and document formatting run entirely on your Mac or your iPhone/iPad. <strong>No third-party AI service is used on iPhone or iPad</strong> — all AI processing there is Apple Intelligence, running on-device.</p>
   </div>
 
   <h2>What this app does with your voice and text</h2>
   <p>Audio you record is transcribed and your documents are formatted <strong>on-device</strong>:</p>
   <ul>
     <li><strong>macOS:</strong> transcription runs locally via whisper.cpp; formatting is handled by an OpenAI-compatible LLM server that you install and run yourself on your own Mac (e.g. omlx, Ollama, LM Studio, llama.cpp). By default this server listens on <code>127.0.0.1</code> — your own machine — so nothing leaves the device. If you deliberately point the app at a remote server you control, your transcript is sent only to that address; we have no visibility into it and never see it.</li>
-    <li><strong>iOS / iPadOS:</strong> transcription uses Apple's on-device SpeechAnalyzer and formatting uses Apple's on-device Foundation Models. The app works fully offline, including in airplane mode.</li>
+    <li><strong>iOS / iPadOS:</strong> transcription uses Apple's on-device Speech framework (SpeechAnalyzer) and document formatting uses <strong>Apple Intelligence</strong> (on-device Foundation Models). No audio, transcript, or document text is sent to Apple, to us, or to any third party — the entire pipeline runs in the app's own process on your device. The app works fully offline, including in airplane mode.</li>
+  </ul>
+
+  <h2>Third-party AI services</h2>
+  <p>Speech-to-Markdown does not use, and does not send your data to, any third-party AI service — not OpenAI, not Anthropic, not Google, not any cloud vendor.</p>
+  <ul>
+    <li><strong>On iPhone and iPad</strong>, every AI feature is Apple Intelligence, running on-device. There is no server-side component, no API key, and no network request involved in transcription or formatting.</li>
+    <li><strong>On Mac</strong>, the local LLM server is not a third-party service either: it's software you choose, install, and run yourself on your own computer. "OpenAI-compatible" describes only the <em>API request/response format</em> that server speaks — the same format many local-LLM tools implement so they're interchangeable — it is not a connection to OpenAI, the company. Nothing is ever sent to OpenAI.</li>
   </ul>
 
   <h2>What we collect</h2>
