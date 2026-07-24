@@ -151,6 +151,8 @@ Agent Mode on your phone — **everything runs offline, on the device**. No LLM 
   <img src="demo/appstore-ipad-13-editor.png" alt="iPad: editor" width="37%"/>
 </p>
 
+<p align="center"><a href="https://apps.apple.com/us/app/speechtomarkdown/id6789775244"><b>📲 Download on the App Store</b></a></p>
+
 Building from source: `make build-ios` / `make test-ios` (see [Development](#%EF%B8%8F-development)). Running on a device needs a development team: `xcodebuild -scheme SpeechToMarkdownIOS -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=<TEAMID> …` (and Developer Mode enabled on the phone).
 
 ---
